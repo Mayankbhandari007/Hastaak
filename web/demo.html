@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hastaak</title>
+</head>
+<body class="demo">
+  <header class="topbar">
+    <div>
+      <h1>Hastaak</h1>
+      <p class="sub">Indian Sign Language ⇄ speech, face to face</p>
+    </div>
+    <div class="topctl">
+      <label>Listener's language
+        <select id="lang"></select>
+      </label>
+      <span id="server" class="pill">Checking server…</span>
+    </div>
+  </header>
+
+  <main class="sides">
+    <!-- Deaf person → hearing person -->
+    <section class="side">
+      <h2>Deaf person signs</h2>
+      <div id="stage">
+        <video id="video" playsinline muted></video>
+        <canvas id="canvas"></canvas>
+        <img id="nativeView" alt="Native camera preview" hidden />
+      </div>
+      <div id="banner" class="banner">Click Start camera</div>
+      <div id="suggest" class="chips suggest"></div>
+      <div id="diag" class="diag"></div>
+      <div class="row-btns">
+        <select id="camMode" title="Native runs recognition in Python (python/vision_server.py): much faster on a busy laptop">
+          <option value="native">Native camera (faster)</option>
+          <option value="browser">Camera in browser</option>
+        </select>
+        <button id="start" class="primary">Start camera</button>
+        <button id="speakBtn" class="primary" disabled>Speak sentence 👍</button>
+        <button id="undo">Undo</button>
+        <button id="clear">Clear</button>
+        <button id="saveRecent" title="Save the last 20 seconds (video with tracking drawn + the data the model saw) for debugging">Save recording</button>
+      </div>
+      <div class="label">Signs so far <span class="hint-inline">(tap a sign to remove it)</span></div>
+      <div id="sentence" class="chips big-chips"></div>
+      <div class="label">Spoken to the listener</div>
+      <div id="spoken" class="out">–</div>
+      <details class="vocab-details">
+        <summary id="vocabSummary">Add a sign by tapping (if recognition misses it)</summary>
+        <div id="vocab" class="chips"></div>
+      </details>
+      <p class="hint">Raise your hands, sign, lower your hands. Sign the whole sentence, then hold a thumbs-up
+        (or press Speak). Raised eyebrows mark a yes/no question.</p>
+    </section>
+
+    <!-- Hearing person → Deaf person -->
+    <section class="side">
+      <h2>Hearing person speaks</h2>
+      <button id="mic" class="mic" disabled>🎤 Tap to talk</button>
+      <div class="label">They said</div>
+      <div id="caption" class="out caption">–</div>
+      <div id="english" class="english"></div>
+      <div class="label">In ISL</div>
+      <div class="player">
+        <video id="clip" playsinline muted></video>
+        <div id="clipLabel" class="clip-label"></div>
+      </div>
+      <div id="glosses" class="chips"></div>
+      <div class="row-btns"><button id="replay" disabled>Replay signs</button></div>
+      <p class="hint">Words without a sign stay in the caption. Sign videos: INCLUDE dataset (AI4Bharat), CC BY-NC-SA 4.0.</p>
+    </section>
+  </main>
+
+  <section class="log-wrap">
+    <h2>Conversation</h2>
+    <div id="log" class="log"></div>
+  </section>
+
+  <script type="module" src="/src/demo.ts"></script>
+</body>
+</html>

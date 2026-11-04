@@ -1,0 +1,10 @@
+mediapipe>=0.10.14
+opencv-python>=4.9
+numpy>=1.26
+torch>=2.2
+tqdm>=4.66
+onnx>=1.16
+onnxruntime>=1.18
+onnxscript>=0.2
+fastapi>=0.115          # vision_server.py (native camera mode)
+uvicorn[standard]>=0.30

@@ -1,0 +1,8 @@
+# Text files are stored with LF line endings; Git converts them for your platform on checkout
+* text=auto
+
+# Binary assets the demo needs (never diffed or converted)
+*.onnx binary
+*.webm binary
+*.task binary
+*.wasm binary

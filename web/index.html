@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MediaPipe playground</title>
+</head>
+<body>
+  <header>
+    <h1>MediaPipe playground</h1>
+    <p class="sub">Hands, face, and pose landmarks · live sign recognition · thumbs-up · raised eyebrows · live feature vector</p>
+  </header>
+
+  <main class="wrap">
+    <section>
+      <div id="stage">
+        <video id="video" playsinline muted></video>
+        <canvas id="canvas"></canvas>
+      </div>
+
+      <div class="controls">
+        <button id="start" class="primary">Start</button>
+        <button id="recal">Recalibrate eyebrows</button>
+        <label>as <select id="recLabel"><option value="">unlabelled</option></select></label>
+        <button id="record">Record 3 s of features</button>
+        <button id="clearHistory">Clear signs</button>
+        <label><input type="checkbox" id="showPose" checked /> Pose</label>
+        <label><input type="checkbox" id="showHands" checked /> Hands</label>
+        <label><input type="checkbox" id="showFace" checked /> Face</label>
+      </div>
+      <p id="status">Click Start and allow camera access.</p>
+    </section>
+
+    <aside>
+      <div class="card">
+        <h2>Sign recognition</h2>
+        <div id="segState" class="big">Model not loaded</div>
+        <ol id="preds" class="preds"></ol>
+        <div class="row"><span>Recognized signs</span><span>inference <b id="inferMs">–</b></span></div>
+        <div id="history" class="chips"></div>
+        <details class="vocab-details">
+          <summary id="vocabSummary">Known signs</summary>
+          <div id="vocab" class="vocab"></div>
+        </details>
+        <p class="hint">Raise your hands, perform one sign, then lower your hands. Signs below 35% confidence
+          are shown but not added to the list.</p>
+      </div>
+
+      <div class="card">
+        <h2>Action 1: thumbs-up</h2>
+        <div id="thumb" class="big">Not detected</div>
+        <p class="hint">Fist with thumb pointing up, held for about a third of a second.</p>
+      </div>
+
+      <div class="card">
+        <h2>Action 2: raised eyebrows</h2>
+        <div id="brow" class="big">Waiting for face…</div>
+        <div class="bar"><div class="fill" id="browFill"></div><div class="mark" id="browMark"></div></div>
+        <div class="row"><span>Brow score <b id="browVal">0.00</b></span><span>Baseline <b id="baseVal">–</b></span></div>
+        <div class="row"><span>Sensitivity</span><b id="thrVal">0.15</b></div>
+        <input id="thr" type="range" min="0.05" max="0.40" step="0.01" value="0.15" />
+      </div>
+
+      <div class="card">
+        <h2>Finger states (first hand)</h2>
+        <div class="fingers">
+          <div class="f" id="f0">Thumb</div><div class="f" id="f1">Index</div><div class="f" id="f2">Middle</div>
+          <div class="f" id="f3">Ring</div><div class="f" id="f4">Pinky</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Feature vector (spec v1, 156 numbers)</h2>
+        <div class="row"><span>Signer pose found</span><b id="ftPose">no</b></div>
+        <div class="row"><span>Slot A hand (left wrist)</span><b id="ftA">absent</b></div>
+        <div class="row"><span>Slot B hand (right wrist)</span><b id="ftB">absent</b></div>
+        <div class="row"><span>Slot A wrist height</span><b id="ftAy">–</b></div>
+        <div class="row"><span>Slot B wrist height</span><b id="ftBy">–</b></div>
+        <p class="hint">Height is in shoulder widths below the shoulders. Negative means above shoulder level.</p>
+      </div>
+
+      <div class="card">
+        <h2>Performance</h2>
+        <div class="row"><span>Frames per second</span><b id="fps">0</b></div>
+        <div class="row"><span>Pose model</span><b id="tPose">–</b></div>
+        <div class="row"><span>Hand model</span><b id="tHands">–</b></div>
+        <div class="row"><span>Face model</span><b id="tFace">–</b></div>
+      </div>
+    </aside>
+  </main>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
