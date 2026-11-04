@@ -7,6 +7,7 @@ Run:  python vision_server.py                 (port 8001; the web dev server pro
 import argparse
 import asyncio
 import json
+import sys
 import threading
 import time
 from collections import deque
@@ -76,7 +77,7 @@ class Vision:
         if self.video:                                   # a file instead of the webcam (testing, demo fallback)
             cap = cv2.VideoCapture(self.video)
         else:
-            cap = cv2.VideoCapture(self.camera, cv2.CAP_DSHOW) if hasattr(cv2, "CAP_DSHOW") else cv2.VideoCapture(self.camera)
+            cap = cv2.VideoCapture(self.camera, cv2.CAP_DSHOW) if sys.platform == "win32" else cv2.VideoCapture(self.camera)
             cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
             cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)          # always the newest frame, never a growing backlog
