@@ -8,7 +8,7 @@ language (Hindi, English and 9 more Indian languages). The hearing person speaks
 plus ISL sign videos.
 
     web/      browser app: demo.html (Hastaak) and index.html (playground / recorder)
-    server/   FastAPI backend: keeps the API key, calls Sarvam (chat, speech-to-text, text-to-speech)
+    server/   FastAPI backend: keeps the API key, calls the AI provider (chat, speech-to-text, text-to-speech)
     python/   tracking, training, evaluation, ONNX export, sign videos, native camera server
     docs/     how everything works and why: start with CLAUDE.md (the index)
 
@@ -28,7 +28,7 @@ First-time setup (virtual environments, `npm install`, the `.env` file) is in
     cd python
     .venv\Scripts\python vision_server.py
 
-Open http://localhost:5173/demo.html in Chrome. Check it says **Connected: sarvam** and **Native camera (faster)**,
+Open http://localhost:5173/demo.html in Chrome. Check it says **Connected: &lt;provider&gt;** and **Native camera (faster)**,
 then press **Start camera**.
 - **Deaf → hearing:** raise your hands, sign, lower them. Repeat, then hold a thumbs-up (or press Speak).
 - **Hearing → Deaf:** tap the microphone, speak, tap again.
