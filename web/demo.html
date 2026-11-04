@@ -7,85 +7,143 @@
   <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
 </head>
 <body class="demo">
+  <!-- Inline icon set (Lucide-style strokes), referenced with <use href="#i-…"> -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-camera" viewBox="0 0 24 24"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h2L9 4h6l1.5 2h2A2.5 2.5 0 0 1 21 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5z"/><circle cx="12" cy="12.5" r="3.5"/></symbol>
+      <symbol id="i-speak" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></symbol>
+      <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+      <symbol id="i-clear" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></symbol>
+      <symbol id="i-save" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></symbol>
+      <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></symbol>
+      <symbol id="i-replay" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></symbol>
+      <symbol id="i-flip" viewBox="0 0 24 24"><path d="M7 4v16"/><path d="m3 8 4-4 4 4"/><path d="M17 20V4"/><path d="m21 16-4 4-4-4"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    </defs>
+  </svg>
+
   <header class="topbar">
-    <div>
+    <div class="brand">
       <h1><img class="brand-logo" src="/brand/hastaak-logo-light.svg" alt="Hastaak" width="1257" height="386" /></h1>
       <p class="sub">Indian Sign Language ⇄ speech, face to face</p>
     </div>
     <div class="topctl">
-      <label>Listener's language
-        <select id="lang"></select>
+      <label class="lang"><span class="lang-text">Listener's language</span>
+        <select id="lang" aria-label="Listener's language"></select>
       </label>
-      <span id="server" class="pill">Checking server…</span>
+      <span id="server" class="pill" role="status">Checking server…</span>
+      <button class="icon-btn" popovertarget="logPop" aria-label="Conversation history" title="Conversation history">
+        <svg class="ic"><use href="#i-chat" /></svg>
+      </button>
     </div>
   </header>
 
   <main class="sides">
     <!-- Deaf person → hearing person -->
-    <section class="side">
-      <h2>Deaf person signs</h2>
+    <section class="side side-sign" aria-labelledby="signHead">
+      <div class="side-head">
+        <h2 id="signHead">Deaf person signs</h2>
+        <button id="saveRecent" class="icon-btn" aria-label="Save recording"
+          title="Save the last 20 seconds (video with tracking drawn + the data the model saw) for debugging"><svg class="ic"><use href="#i-save" /></svg></button>
+      </div>
+
       <div id="stage">
+        <p class="stage-hint">Raise your hands, sign, lower your hands. Sign the whole sentence, then hold a
+          thumbs-up (or press Speak). Raised eyebrows mark a yes/no question.</p>
         <video id="video" playsinline muted></video>
         <canvas id="canvas"></canvas>
         <img id="nativeView" alt="Native camera preview" hidden />
+        <div id="diag" class="diag"></div>
+        <div class="stage-overlay">
+          <div id="suggest" class="chips suggest"></div>
+          <div id="banner" class="banner" role="status" aria-live="polite">Click Start camera</div>
+        </div>
       </div>
-      <div id="banner" class="banner">Click Start camera</div>
-      <div id="suggest" class="chips suggest"></div>
-      <div id="diag" class="diag"></div>
+
+      <div class="pcard sentence-card">
+        <div class="pcard-head">
+          <span class="label">Signed sentence <span class="hint-inline">tap a sign to remove it</span></span>
+          <button class="ghost-btn" popovertarget="vocabPop" title="Add a sign by tapping (if recognition misses it)">
+            <svg class="ic"><use href="#i-plus" /></svg><span id="vocabSummary">Add sign</span>
+          </button>
+        </div>
+        <div id="sentence" class="chips big-chips" aria-live="polite"></div>
+        <div class="spoken-row"><span class="label">Spoken</span><span id="spoken" class="spoken">–</span></div>
+      </div>
+
       <div class="row-btns">
-        <select id="camMode" title="Native runs recognition in Python (python/vision_server.py): much faster on a busy laptop">
-          <option value="native">Native camera (faster)</option>
-          <option value="browser">Camera in browser</option>
+        <select id="camMode" aria-label="Camera source" title="Native runs recognition in Python (python/vision_server.py): much faster on a busy laptop">
+          <option value="native">Native camera</option>
+          <option value="browser">Browser camera</option>
         </select>
-        <button id="start" class="primary">Start camera</button>
-        <button id="speakBtn" class="primary" disabled>Speak sentence 👍</button>
-        <button id="undo">Undo</button>
-        <button id="clear">Clear</button>
-        <button id="saveRecent" title="Save the last 20 seconds (video with tracking drawn + the data the model saw) for debugging">Save recording</button>
+        <button id="start" class="primary"><svg class="ic"><use href="#i-camera" /></svg><span class="lbl">Start camera</span></button>
+        <button id="speakBtn" disabled title="Or hold a thumbs-up"><svg class="ic"><use href="#i-speak" /></svg><span class="lbl">Speak sentence</span></button>
+        <button id="undo" class="collapse"><svg class="ic"><use href="#i-undo" /></svg><span class="lbl">Undo</span></button>
+        <button id="clear" class="collapse"><svg class="ic"><use href="#i-clear" /></svg><span class="lbl">Clear</span></button>
       </div>
-      <div class="label">Signs so far <span class="hint-inline">(tap a sign to remove it)</span></div>
-      <div id="sentence" class="chips big-chips"></div>
-      <div class="label">Spoken to the listener</div>
-      <div id="spoken" class="out">–</div>
-      <details class="vocab-details">
-        <summary id="vocabSummary">Add a sign by tapping (if recognition misses it)</summary>
-        <div id="vocab" class="chips"></div>
-      </details>
-      <p class="hint">Raise your hands, sign, lower your hands. Sign the whole sentence, then hold a thumbs-up
-        (or press Speak). Raised eyebrows mark a yes/no question.</p>
     </section>
 
     <!-- Hearing person → Deaf person -->
-    <section class="side">
-      <h2>Hearing person speaks</h2>
-      <button id="mic" class="mic" disabled>🎤 Tap to talk</button>
-      <div class="label">They said</div>
-      <div id="caption" class="out caption">–</div>
-      <div id="english" class="english"></div>
-      <div class="label isl-head">In ISL
-        <span class="seg" role="group" aria-label="Show signs as">
-          <button id="showAvatar" class="on" aria-pressed="true">Avatar</button>
-          <button id="showVideo" aria-pressed="false">Real signer</button>
-        </span>
+    <section class="side side-voice" aria-labelledby="voiceHead">
+      <div class="side-head">
+        <h2 id="voiceHead">Hearing person speaks</h2>
+        <button id="flip" class="ghost-btn flip-btn" aria-pressed="false" title="Turn this panel to face the person opposite">
+          <svg class="ic"><use href="#i-flip" /></svg><span>Flip</span>
+        </button>
       </div>
-      <div class="player">
-        <div id="avatarBox" class="avatar-box">
-          <canvas id="avatar" width="508" height="480" aria-label="Signing avatar"></canvas>
-          <div id="greet" class="greet" role="status">Namaste, I am Hastaak<small>I'll sign what you say</small></div>
+
+      <button id="mic" class="mic" disabled><svg class="ic"><use href="#i-mic" /></svg><span class="lbl">Tap to talk</span></button>
+
+      <div class="voice-body">
+        <div class="pcard transcript-card">
+          <div class="pcard-head"><span class="label">They said</span></div>
+          <ol id="transcript" class="transcript" aria-live="polite"></ol>
         </div>
-        <video id="clip" playsinline muted hidden></video>
-        <div id="clipLabel" class="clip-label"></div>
+
+        <div class="pcard isl-card">
+          <div class="pcard-head">
+            <span class="label">In ISL</span>
+            <span class="seg" role="group" aria-label="Show signs as">
+              <button id="showAvatar" class="on" aria-pressed="true">Avatar</button>
+              <button id="showVideo" aria-pressed="false">Real signer</button>
+            </span>
+          </div>
+          <div class="player">
+            <div id="avatarBox" class="avatar-box">
+              <canvas id="avatar" width="420" height="480" aria-label="Signing avatar"></canvas>
+              <div id="greet" class="greet" role="status">Namaste, I am Hastaak<small>I'll sign what you say</small></div>
+            </div>
+            <video id="clip" playsinline muted hidden></video>
+            <div id="clipLabel" class="clip-label"></div>
+            <button id="replay" class="icon-btn" disabled aria-label="Replay signs" title="Replay signs"><svg class="ic"><use href="#i-replay" /></svg></button>
+          </div>
+          <div class="isl-foot"><div id="glosses" class="chips"></div></div>
+          <p class="credit">Words without a sign stay in the caption. Sign videos: INCLUDE (AI4Bharat), CC BY-NC-SA 4.0.</p>
+        </div>
       </div>
-      <div id="glosses" class="chips"></div>
-      <div class="row-btns"><button id="replay" disabled>Replay signs</button></div>
-      <p class="hint">Words without a sign stay in the caption. Sign videos: INCLUDE dataset (AI4Bharat), CC BY-NC-SA 4.0.</p>
     </section>
   </main>
 
-  <section class="log-wrap">
-    <h2>Conversation</h2>
+  <!-- Popovers: kept out of the layout so the page never scrolls -->
+  <div id="vocabPop" class="pop" popover>
+    <div class="pop-head">
+      <h2>Add a sign by tapping</h2>
+      <button class="icon-btn" popovertarget="vocabPop" popovertargetaction="hide" aria-label="Close"><svg class="ic"><use href="#i-close" /></svg></button>
+    </div>
+    <p class="pop-sub">Use this if recognition misses a sign.</p>
+    <div id="vocab" class="chips"></div>
+  </div>
+
+  <div id="logPop" class="pop pop-log" popover>
+    <div class="pop-head">
+      <h2>Conversation</h2>
+      <button class="icon-btn" popovertarget="logPop" popovertargetaction="hide" aria-label="Close"><svg class="ic"><use href="#i-close" /></svg></button>
+    </div>
     <div id="log" class="log"></div>
-  </section>
+    <p class="credit">Words without a sign stay in the caption. Sign videos: INCLUDE (AI4Bharat), CC BY-NC-SA 4.0.</p>
+  </div>
 
   <script type="module" src="/src/demo.ts"></script>
 </body>

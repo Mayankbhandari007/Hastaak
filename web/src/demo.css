@@ -4,55 +4,94 @@
    Deaf -> hearing direction is teal, everything belonging to hearing -> Deaf
    is blue, and the channel colour is inherited through --accent-* rather than
    set per component. A glance tells you which half of the conversation you
-   are looking at, and the status banner tells you whether the machine is
-   reading you -- those two facts are what you need mid-sentence. */
+   are looking at, and the status pill tells you whether the machine is
+   reading you -- those two facts are what you need mid-sentence.
 
-body.demo { max-width: 1440px; margin: 0 auto; }
+   One screen, no page scroll: the page is exactly the viewport (header + main),
+   the panels fill it, and only the text areas inside them scroll. Anything that
+   would push content below the fold (vocabulary, conversation history) lives
+   in a popover instead. */
 
-/* Native camera preview (vision_server.py MJPEG): already mirrored by Python,
-   and above the stage placeholder like the video and canvas. */
-#stage img {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+/* ---------------------------------------------------------------- Page frame */
+body.demo {
+  height: 100vh;
+  height: 100dvh;
+  padding: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
 }
-#stage [hidden] { display: none; }
 
-/* ---------------------------------------------------------------- Top bar */
+.ic {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Buttons carry icon + label; touch targets are 44px everywhere (WCAG 2.5.5) */
+.demo button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  min-height: 44px;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+.demo select { min-height: 44px; }
+
+.icon-btn { width: 44px; padding: 0 !important; flex: none; }
+
+.ghost-btn {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--text-muted) !important;
+  font-size: var(--text-sm) !important;
+  padding: 0 10px !important;
+}
+.ghost-btn:hover { background: var(--surface-2) !important; color: var(--text) !important; border-color: var(--line) !important; }
+
+/* ---------------------------------------------------------------- Top bar (one row, 56px) */
 .topbar {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: flex-end;
   gap: var(--space-6);
-  flex-wrap: wrap;
-  padding-bottom: var(--space-5);
-  margin-bottom: var(--space-6);
+  height: 56px;
+  padding: 0 16px;
   border-bottom: 1px solid var(--line);
+  min-width: 0;
 }
 
+.brand { display: flex; align-items: center; gap: var(--space-6); min-width: 0; }
 /* The Hastaak wordmark is the heading; its alt text carries the name. The
    light variant (white hand and letters, orange marks) is the one that reads
    on the dark top bar -- the navy original nearly vanishes against --bg. */
-.topbar h1 {
-  display: flex;
-  align-items: center;
-  margin: 0 0 var(--space-2);
-  line-height: 0;
+.topbar h1 { margin: 0; line-height: 0; flex: none; }
+.brand-logo { display: block; height: 32px; width: auto; }
+.brand .sub {
+  padding-left: var(--space-6);
+  border-left: 1px solid var(--line);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.brand-logo { display: block; height: 40px; width: auto; }
 
 .topctl {
   display: flex;
-  gap: var(--space-6);
+  gap: var(--space-5);
   align-items: center;
   font-size: var(--text-sm);
   color: var(--text-muted);
-  flex-wrap: wrap;
+  flex: none;
 }
 .topctl label { display: flex; align-items: center; gap: var(--space-4); }
+.topctl .icon-btn { background: transparent; }
 
 .pill {
   display: inline-flex;
@@ -65,6 +104,10 @@ body.demo { max-width: 1440px; margin: 0 auto; }
   background: var(--surface-2);
   color: var(--text-muted);
   border: 1px solid var(--line);
+  max-width: 36ch;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .pill::before {
   content: "";
@@ -80,20 +123,25 @@ body.demo { max-width: 1440px; margin: 0 auto; }
 /* ---------------------------------------------------------------- Panels */
 .sides {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-  gap: var(--space-6);
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  padding: 16px;
+  min-height: 0;
 }
-@media (max-width: 1100px) { .sides { grid-template-columns: 1fr; } }
 
 .side {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+  min-height: 0;
+  padding: 16px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  padding: var(--space-6);
-  min-width: 0;
   box-shadow: var(--shadow-sm);
+  container: side / inline-size;
 }
 
 /* A wash of the channel colour across the top of its own panel */
@@ -108,7 +156,7 @@ body.demo { max-width: 1440px; margin: 0 auto; }
 }
 .side > * { position: relative; }
 
-.sides > .side:nth-child(1) {
+.side-sign {
   --accent: var(--sign);
   --accent-ink: var(--sign-ink);
   --accent-contrast: var(--sign-contrast);
@@ -116,7 +164,7 @@ body.demo { max-width: 1440px; margin: 0 auto; }
   --accent-chip-ink: var(--sign-chip-ink);
   --accent-soft: var(--sign-soft);
 }
-.sides > .side:nth-child(2) {
+.side-voice {
   --accent: var(--voice);
   --accent-ink: var(--voice-ink);
   --accent-contrast: var(--voice-contrast);
@@ -125,14 +173,22 @@ body.demo { max-width: 1440px; margin: 0 auto; }
   --accent-soft: var(--voice-soft);
 }
 
-.side h2, .log-wrap h2 {
+.side-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: 28px;
+  flex: none;
+}
+.side h2 {
   display: flex;
   align-items: center;
   gap: var(--space-4);
   font-size: var(--text-md);
   font-weight: 650;
   letter-spacing: -0.01em;
-  margin: 0 0 var(--space-5);
+  margin: 0;
   color: var(--text);
 }
 .side h2::before {
@@ -144,189 +200,224 @@ body.demo { max-width: 1440px; margin: 0 auto; }
   background: var(--accent);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
 }
+.flip-btn { display: none !important; }
 
-/* ---------------------------------------------------------------- Status banner
-   The one element read mid-sign, often from across a table. It gets the
-   largest non-content type on the page and an unmistakable state colour. */
-.banner {
+/* Inner cards (sentence, transcript, ISL viewer) */
+.pcard {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 0;
+  min-width: 0;
+  padding: var(--space-5) var(--space-6) var(--space-6);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+.pcard-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  min-height: 44px;
+  margin: calc(-1 * var(--space-2)) 0 0;
+  flex: none;
+}
+
+/* ---------------------------------------------------------------- Field labels (12px caps) */
+.label {
+  white-space: nowrap;
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.hint-inline {
+  margin-left: var(--space-3);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+/* ---------------------------------------------------------------- Camera stage
+   4:3 box at the top of the left panel (~57% of it, leaving the sentence 2-3 rows). The 16:9 camera picture is
+   contained in it, so the status pill sits in the letterbox below the signer
+   rather than over their hands. It shrinks, never overflows, on short screens. */
+.side-sign #stage {
+  flex: 0 1 auto;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 57%;
+  min-height: 160px;
+}
+
+/* Native camera preview (vision_server.py MJPEG): already mirrored by Python,
+   and above the stage placeholder like the video and canvas. */
+#stage img {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+#stage [hidden] { display: none; }
+
+/* Shown with the placeholder icon until a picture paints over it */
+#stage::before { background-position: center calc(50% - 44px); }
+.stage-hint {
+  position: absolute;
+  z-index: 0;
+  inset: 50% 0 auto;
+  margin: 0 auto;
+  padding: 0 var(--space-8);
+  max-width: 46ch;
+  text-align: center;
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  color: var(--text-muted);
+  transform: translateY(-4px);
+}
+
+.diag {
+  position: absolute;
+  z-index: 3;
+  top: var(--space-4);
+  left: var(--space-4);
+  max-width: calc(100% - 16px);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: rgb(0 0 0 / 0.62);
+  font-size: var(--text-2xs);
+  color: #c9d1d7;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.diag:empty { display: none; }
+
+/* Status pill + "did you mean", overlaid at the bottom of the picture */
+.stage-overlay {
+  position: absolute;
+  z-index: 3;
+  inset: auto 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  pointer-events: none;
+}
+.stage-overlay > * { pointer-events: auto; }
+
+/* The one element read mid-sign, often from across a table: large type and an
+   unmistakable state colour, solid enough to read over any background. */
+.banner {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-5);
-  margin-top: var(--space-5);
-  min-height: 60px;
-  padding: var(--space-5) var(--space-6);
-  border-radius: var(--radius);
+  max-width: 100%;
+  min-height: 48px;
+  padding: var(--space-4) var(--space-7);
+  border-radius: var(--radius-pill);
   font-size: var(--text-lg);
-  font-weight: 600;
-  line-height: 1.35;
+  font-weight: 650;
+  line-height: 1.3;
   text-align: center;
   text-wrap: balance;
-  background: var(--surface-2);
-  color: var(--text-muted);
-  border: 1px solid var(--line);
+  background: rgb(23 26 29 / 0.92);
+  color: var(--text);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(6px);
   transition: background var(--base) var(--ease), color var(--base) var(--ease),
               border-color var(--base) var(--ease);
 }
 .banner::before {
   content: "";
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   flex: none;
   background: currentColor;
-  box-shadow: 0 0 0 5px color-mix(in srgb, currentColor 16%, transparent);
+  box-shadow: 0 0 0 5px color-mix(in srgb, currentColor 18%, transparent);
 }
-.banner.ok { background: var(--ok-soft); color: var(--ok-ink); border-color: color-mix(in srgb, var(--ok) 42%, transparent); }
-.banner.bad { background: var(--bad-soft); color: var(--bad-ink); border-color: color-mix(in srgb, var(--bad) 42%, transparent); font-size: var(--text-md); }
-.banner.active {
-  background: var(--busy-soft);
-  color: var(--busy-ink);
-  border-color: color-mix(in srgb, var(--busy) 42%, transparent);
-}
+.banner.ok { background: color-mix(in srgb, var(--ok-soft) 94%, transparent); color: var(--ok-ink); border-color: color-mix(in srgb, var(--ok) 55%, transparent); }
+.banner.bad { background: color-mix(in srgb, var(--bad-soft) 94%, transparent); color: var(--bad-ink); border-color: color-mix(in srgb, var(--bad) 55%, transparent); font-size: var(--text-md); border-radius: var(--radius-lg); }
+.banner.active { background: color-mix(in srgb, var(--busy-soft) 94%, transparent); color: var(--busy-ink); border-color: color-mix(in srgb, var(--busy) 55%, transparent); }
 /* The only looping motion on the page: the machine is mid-read, keep going */
 .banner.active::before { animation: beacon 1.4s var(--ease) infinite; }
 
 @keyframes beacon {
-  0%, 100% { box-shadow: 0 0 0 5px color-mix(in srgb, currentColor 16%, transparent); }
+  0%, 100% { box-shadow: 0 0 0 5px color-mix(in srgb, currentColor 18%, transparent); }
   50% { box-shadow: 0 0 0 11px color-mix(in srgb, currentColor 0%, transparent); }
 }
 
-@media (min-width: 1100px) {
-  .banner { font-size: var(--text-xl); min-height: 68px; }
+@container side (min-width: 620px) {
+  .banner { font-size: var(--text-xl); min-height: 56px; }
   .banner.bad { font-size: var(--text-md); }
 }
 
-/* ---------------------------------------------------------------- Did you mean */
 .suggest {
-  margin-top: var(--space-5);
+  margin: 0;
+  justify-content: center;
   align-items: center;
   gap: var(--space-4);
-  padding: var(--space-4) var(--space-5);
-  border-radius: var(--radius);
-  background: var(--surface-2);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-pill);
+  background: rgb(23 26 29 / 0.92);
   border: 1px dashed var(--line-strong);
+  min-height: 0;
 }
 .suggest:empty { display: none; }
-
 .suggest-label {
   font-size: var(--text-xs);
   font-weight: 650;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
-
 .suggest .chip.maybe {
   font-size: var(--text-base);
-  padding: 9px 16px;
-  min-height: 38px;
+  padding: 0 16px;
+  min-height: 44px;
   cursor: pointer;
   background: var(--manual-bg);
   color: var(--manual-ink);
   border-color: color-mix(in srgb, var(--manual) 45%, transparent);
 }
-.suggest .chip.maybe:hover {
-  background: color-mix(in srgb, var(--manual) 42%, var(--manual-bg));
-  border-color: var(--manual);
-}
-.suggest .chip.maybe:active { transform: translateY(1px); }
+.suggest .chip.maybe:hover { background: color-mix(in srgb, var(--manual) 42%, var(--manual-bg)); border-color: var(--manual); }
 
-/* ---------------------------------------------------------------- Diagnostics */
-.diag {
-  font-size: var(--text-xs);
-  color: var(--text-faint);
-  margin-top: var(--space-4);
-  min-height: 16px;
-  font-variant-numeric: tabular-nums;
-}
+/* ---------------------------------------------------------------- Signed sentence
+   What the hearing person is about to hear. It takes the space left under the
+   camera (at least 2-3 lines) and scrolls inside if the sentence runs long. */
+.sentence-card { flex: 1 1 140px; min-height: 140px; }
 
-/* ---------------------------------------------------------------- Button rows
-   Three tiers, assigned by what each control is for rather than by markup:
-   the filled one finishes the turn, outlines are reversible, the ghost is a
-   debugging tool that should never compete with either. */
-.row-btns {
-  display: flex;
-  gap: var(--space-4);
-  flex-wrap: wrap;
-  align-items: center;
-  margin-top: var(--space-5);
-}
-.row-btns select { margin-left: 0; }
-
-#start {
-  background: transparent;
-  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
-  color: var(--accent-ink);
-}
-#start:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  border-color: var(--accent);
-}
-
-#speakBtn {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-contrast);
-  font-weight: 650;
-  padding-inline: 20px;
-}
-#speakBtn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 86%, white);
-  border-color: color-mix(in srgb, var(--accent) 86%, white);
-}
-#speakBtn:disabled { background: var(--surface-2); border-color: var(--line); color: var(--text-faint); }
-
-#saveRecent {
-  background: transparent;
-  border-color: transparent;
-  color: var(--text-faint);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  padding-inline: 10px;
-}
-#saveRecent:hover:not(:disabled) { background: var(--surface-2); border-color: var(--line); color: var(--text-muted); }
-
-/* ---------------------------------------------------------------- Field labels */
-.label {
-  margin-top: var(--space-7);
-  margin-bottom: var(--space-3);
-  font-size: var(--text-xs);
-  font-weight: 650;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-.hint-inline {
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  text-transform: none;
-  color: var(--text-faint);
-  opacity: 0.85;
-}
-
-/* ---------------------------------------------------------------- Sign chips */
 .big-chips {
-  min-height: 48px;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  overflow-y: auto;
   gap: var(--space-4);
-  padding: var(--space-4);
-  border-radius: var(--radius);
-  background: var(--surface-2);
-  border: 1px solid var(--line);
   align-content: flex-start;
 }
 .big-chips:not(:has(.chip))::before {
-  content: "No signs yet";
-  font-size: var(--text-sm);
+  content: "Signs appear here as you make them";
+  font-size: var(--text-lg);
   color: var(--text-faint);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3) 0;
 }
 
 .big-chips .chip {
-  font-size: var(--text-md);
+  font-size: 22px;
   font-weight: 600;
-  padding: 7px 12px 7px 14px;
-  min-height: 38px;
+  line-height: 1.2;
+  padding: 0 14px 0 16px;
+  min-height: 44px;
   cursor: pointer;
 }
 /* Masked so the icon takes the chip's own ink, whichever channel it is in */
@@ -335,90 +426,102 @@ body.demo { max-width: 1440px; margin: 0 auto; }
   order: 2;
   width: 13px;
   height: 13px;
-  margin-left: var(--space-4);
+  margin-left: var(--space-5);
   flex: none;
   background: currentColor;
   opacity: 0.55;
   transition: opacity var(--fast) var(--ease);
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E") center / contain no-repeat;
 }
-.big-chips .chip:hover {
-  background-color: color-mix(in srgb, var(--accent) 34%, var(--accent-chip-bg));
-  border-color: var(--accent);
-}
+.big-chips .chip:hover { background-color: color-mix(in srgb, var(--accent) 34%, var(--accent-chip-bg)); border-color: var(--accent); }
 .big-chips .chip:hover::after { opacity: 1; }
 .big-chips .chip:active { transform: translateY(1px); }
 
-.chip.manual {
-  background-color: var(--manual-bg);
-  color: var(--manual-ink);
-  border-color: color-mix(in srgb, var(--manual) 40%, transparent);
-}
-.big-chips .chip.manual:hover {
-  background-color: color-mix(in srgb, var(--manual) 40%, var(--manual-bg));
-  border-color: var(--manual);
-}
+.chip.manual { background-color: var(--manual-bg); color: var(--manual-ink); border-color: color-mix(in srgb, var(--manual) 40%, transparent); }
+.big-chips .chip.manual:hover { background-color: color-mix(in srgb, var(--manual) 40%, var(--manual-bg)); border-color: var(--manual); }
 
-/* Tap-to-add vocabulary */
-.vocab .chip,
-#vocab .chip {
-  background: var(--surface-2);
-  color: var(--text-muted);
-  border-color: var(--line-strong);
-  cursor: pointer;
-  padding: 7px 13px;
-  min-height: 34px;
-}
-#vocab .chip:hover {
-  background: var(--manual-bg);
-  color: var(--manual-ink);
-  border-color: color-mix(in srgb, var(--manual) 55%, transparent);
-}
-#vocab .chip:active { transform: translateY(1px); }
-
-/* ---------------------------------------------------------------- Output text
-   The sentence and the caption are what the other person reads. They are the
-   largest type on the page by a clear step. */
-.out {
-  font-size: var(--text-xl);
-  font-weight: 550;
-  line-height: 1.35;
-  letter-spacing: -0.01em;
-  padding: var(--space-5) var(--space-6);
-  border-radius: var(--radius);
-  background: var(--bg);
-  border: 1px solid var(--line);
-  min-height: 62px;
+.spoken-row {
   display: flex;
+  align-items: baseline;
+  gap: var(--space-5);
+  flex: none;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+  min-width: 0;
+}
+.spoken-row .label { flex: none; }
+.spoken {
+  font-size: var(--text-md);
+  font-weight: 550;
+  color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- Button row (one row)
+   The filled button finishes the current step (start the camera, then speak),
+   outlines are reversible, the ghost is a debugging tool. */
+.row-btns {
+  display: flex;
+  gap: var(--space-4);
   align-items: center;
-  text-wrap: pretty;
+  flex: none;
 }
-.caption { font-size: var(--text-2xl); min-height: 72px; }
+.row-btns select { min-width: 0; flex: 0 1 auto; max-width: 210px; text-overflow: ellipsis; }
 
-.english {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-  margin-top: var(--space-4);
-  min-height: 20px;
+#start:disabled { background: var(--surface-2); border-color: var(--line); color: var(--accent-ink); }
+
+#speakBtn:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 650;
+}
+#speakBtn:not(:disabled):hover {
+  background: color-mix(in srgb, var(--accent) 86%, white);
+  border-color: color-mix(in srgb, var(--accent) 86%, white);
 }
 
-/* ---------------------------------------------------------------- Microphone */
+.row-btns button { padding: 0 12px; }
+.row-btns #start, .row-btns #speakBtn { flex: 1 1 auto; }
+
+/* Debug tool: a ghost icon in the panel header, out of the way of the real controls */
+#saveRecent { min-height: 36px; width: 36px; margin: -4px -4px -4px 0; background: transparent; border-color: transparent; color: var(--text-faint); }
+#saveRecent:hover { background: var(--surface-2); border-color: var(--line); color: var(--text-muted); }
+
+/* Narrow panel (1024-1279px screens): undo/clear go icon-only to keep one row */
+@container side (max-width: 640px) {
+  .row-btns .collapse { width: 44px; padding: 0; }
+  .row-btns .collapse .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .hint-inline { display: none; }
+}
+@container side (max-width: 560px) {
+  .side-sign #stage { aspect-ratio: 16 / 9; }
+  #stage::before { background-position: center calc(50% - 56px); }
+  .stage-hint { max-width: 56ch; font-size: var(--text-xs); transform: translateY(-24px); }
+}
+@container side (max-width: 520px) {
+  .row-btns { flex-wrap: wrap; }
+  .row-btns select { flex: 1 1 100%; max-width: none; }
+}
+
+/* ---------------------------------------------------------------- Microphone (60px) */
 .mic {
+  flex: none;
   width: 100%;
+  min-height: 60px !important;
   font-size: var(--text-lg);
   font-weight: 650;
-  padding: var(--space-7);
-  min-height: 72px;
   border-radius: var(--radius-lg);
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-contrast);
   box-shadow: var(--shadow);
 }
-.mic:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 86%, white);
-  border-color: color-mix(in srgb, var(--accent) 86%, white);
-}
+.mic .ic { width: 22px; height: 22px; }
+.mic:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 86%, white); border-color: color-mix(in srgb, var(--accent) 86%, white); }
 .mic:disabled { background: var(--surface-2); border-color: var(--line); color: var(--text-faint); box-shadow: none; }
 
 .mic.rec {
@@ -429,63 +532,107 @@ body.demo { max-width: 1440px; margin: 0 auto; }
 }
 @keyframes recording {
   0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--bad) 55%, transparent); }
-  50% { box-shadow: 0 0 0 12px color-mix(in srgb, var(--bad) 0%, transparent); }
+  50% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--bad) 0%, transparent); }
 }
 
-/* ---------------------------------------------------------------- Sign player */
+/* ---------------------------------------------------------------- Transcript + ISL, side by side */
+.voice-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 55fr) minmax(0, 45fr);
+  gap: var(--space-5);
+}
+
+.transcript {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.transcript:empty::before {
+  content: "Tap to talk, and what they say appears here.";
+  font-size: var(--text-lg);
+  color: var(--text-faint);
+  line-height: 1.4;
+}
+.transcript li {
+  font-size: var(--text-lg);
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--text-muted);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius);
+  border-left: 3px solid transparent;
+  text-wrap: pretty;
+}
+/* The newest line is the one being signed: full contrast, larger, channel tint */
+.transcript li.latest {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--voice-soft);
+  border-left-color: var(--accent);
+}
+.transcript li.pending { color: var(--text-faint); font-style: italic; }
+.transcript li.err { color: var(--bad-ink); font-size: var(--text-md); }
+.transcript .en {
+  display: block;
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* ---------------------------------------------------------------- Sign player (portrait card) */
 .player {
   position: relative;
-  margin-top: var(--space-3);
-  background: #000;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  aspect-ratio: 508 / 480;
-  max-height: 380px;
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
+  /* Waist-up figure standing on the bottom edge, like a presenter in a portrait frame */
+  align-items: flex-end;
   justify-content: center;
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.03);
+  /* The avatar canvas paints this colour, so the figure looks like it fills the card */
+  background: #e9eef5;
+  border-radius: var(--radius);
+  overflow: hidden;
+  container: player / size;
 }
-.player::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background:
-    radial-gradient(60% 60% at 50% 45%, rgb(255 255 255 / 0.035), transparent 70%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24' fill='none' stroke='%235b666e' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 13V6.5a1.5 1.5 0 0 1 3 0V12'/%3E%3Cpath d='M11 11.5v-6a1.5 1.5 0 0 1 3 0V12'/%3E%3Cpath d='M14 11.5v-4a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-.5a6 6 0 0 1-5.3-3.2L4 15.5a1.6 1.6 0 0 1 2.6-1.8L8 15.5'/%3E%3C/svg%3E")
-    center / 48px no-repeat;
-}
-.player video,
-.player canvas { position: relative; z-index: 1; height: 100%; max-width: 100%; }
+.player:has(> video:not([hidden])) { background: #000; }
+.player video { width: 100%; height: 100%; object-fit: contain; align-self: center; }
 .player [hidden] { display: none; }
 
-/* The avatar canvas and its greeting share one box with the canvas's own shape, so the bubble's % position
-   stays on the avatar's head however the player is sized (the player can be wider than the canvas). */
+/* The avatar canvas and its greeting share one box with the canvas's own shape,
+   the largest that fits the player, so the whole figure (head to waist) is always
+   visible and the bubble's % position stays on the avatar's head. */
 .avatar-box {
   position: relative;
-  z-index: 1;
-  height: 100%;
-  max-width: 100%;
-  aspect-ratio: 508 / 480;
+  width: min(100cqw, 100cqh * 420 / 480);
+  aspect-ratio: 420 / 480;
   container-type: inline-size;
 }
 .player .avatar-box canvas { display: block; width: 100%; height: 100%; }
 
 /* "Namaste, I am Hastaak": brand navy on white, tail pointing at the head. avatar.ts draws the head centred
-   at 50% / 25% of the canvas with its right edge at ~57%. */
+   at 50% / 25% of the (420×480, portrait) canvas with its right edge at ~59%. */
 .greet {
   position: absolute;
   z-index: 2;
-  left: calc(57.5% + 10px);
+  left: calc(59% + 10px);
   top: 25%;
-  max-width: calc(42.5% - 18px);
+  max-width: calc(41% - 14px);
   padding: 0.55em 0.8em;
   border: 2px solid #123b78;
   border-radius: 14px;
   background: #fff;
   color: #123b78;
-  font-size: clamp(12px, 3.6cqw, 16px);
+  font-size: clamp(11px, 4cqw, 16px);
   font-weight: 650;
   line-height: 1.25;
   opacity: 0;
@@ -508,73 +655,129 @@ body.demo { max-width: 1440px; margin: 0 auto; }
 .greet::before { left: -11px; margin-top: -10px; border-width: 10px 11px 10px 0; border-right-color: #123b78; }
 .greet::after { left: -7px; margin-top: -8px; border-width: 8px 9px 8px 0; border-right-color: #fff; }
 
-/* Avatar / Real signer toggle, sitting in the "In ISL" label row. The label is
-   small caps; the toggle opts out of that and of the 40px button size. */
-.isl-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+/* In a tall portrait card there is room above the head (hair top at ~15% of the canvas), and the
+   space beside it is too narrow: the bubble moves up there, tail pointing down. */
+@container player (max-aspect-ratio: 4 / 5) {
+  .greet {
+    left: 50%;
+    top: auto;
+    bottom: calc(85% + 14px);
+    width: max-content;
+    max-width: calc(100% - 24px);
+    text-align: center;
+    font-size: clamp(13px, 5.5cqw, 17px);
+    transform: translateX(-50%) scale(0.85);
+    transform-origin: center bottom;
+  }
+  .greet.show { transform: translateX(-50%) scale(1); }
+  .greet::before { left: 50%; top: 100%; margin: 0 0 0 -10px; border-width: 11px 10px 0; border-color: #123b78 transparent transparent; }
+  .greet::after { left: 50%; top: 100%; margin: -1px 0 0 -8px; border-width: 8px 8px 0; border-color: #fff transparent transparent; }
+}
+
+/* Avatar / Real signer toggle in the card header */
 .seg {
   display: inline-flex;
-  padding: var(--space-1);
-  gap: var(--space-1);
+  padding: 2px;
+  gap: 2px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   background: var(--surface-2);
 }
 .seg button {
-  min-height: 0;
-  padding: 4px 12px;
+  min-height: 38px !important;
+  padding: 0 12px !important;
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-muted);
   font-size: var(--text-sm);
   font-weight: 550;
-  letter-spacing: normal;
-  text-transform: none;
 }
 .seg button:hover:not(:disabled) { background: var(--surface-3); color: var(--text); }
 .seg button.on,
 .seg button.on:hover:not(:disabled) { background: var(--accent); color: var(--accent-contrast); }
 
+/* The sign being shown, as a pill at the top: the space above the head is free,
+   while the bottom of the frame is where the hands are. */
 .clip-label {
   position: absolute;
   z-index: 2;
-  inset: auto 0 0;
-  padding: var(--space-8) var(--space-5) var(--space-5);
+  top: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 112px);
+  padding: 6px 16px;
+  border-radius: var(--radius-pill);
   text-align: center;
-  font-size: var(--text-lg);
+  font-size: 22px;
   font-weight: 650;
+  line-height: 1.3;
   letter-spacing: -0.01em;
   color: #fff;
-  background: linear-gradient(to top, rgb(0 0 0 / 0.85), rgb(0 0 0 / 0.55) 45%, transparent);
+  background: rgb(15 23 42 / 0.86);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .clip-label:empty { display: none; }
 
+.isl-foot { display: flex; align-items: center; gap: var(--space-4); flex: none; }
+.isl-foot #glosses { flex: 1; min-width: 0; margin: 0; min-height: 0; max-height: 72px; overflow-y: auto; }
+.isl-foot:has(#glosses:empty) { display: none; }
+
+/* Replay sits on the viewer itself, so it never costs a row */
+#replay {
+  position: absolute;
+  z-index: 3;
+  top: var(--space-4);
+  right: var(--space-4);
+  border-radius: var(--radius-pill);
+  background: rgb(23 26 29 / 0.78);
+  border-color: rgb(255 255 255 / 0.18);
+  color: #fff;
+}
+#replay:hover:not(:disabled) { background: rgb(23 26 29 / 0.92); }
+#replay:disabled { display: none; }
 #glosses .chip { transition: background var(--fast) var(--ease), color var(--fast) var(--ease), border-color var(--fast) var(--ease); }
-#glosses .chip.now {
-  background: var(--busy);
-  color: var(--busy-contrast);
-  border-color: var(--busy);
-  font-weight: 650;
-}
+#glosses .chip.now { background: var(--busy); color: var(--busy-contrast); border-color: var(--busy); font-weight: 650; }
 
-/* ---------------------------------------------------------------- Conversation */
-.log-wrap {
-  margin-top: var(--space-6);
-  background: var(--surface);
-  border: 1px solid var(--line);
+.credit { margin: 0; font-size: var(--text-2xs); line-height: 1.4; color: var(--text-faint); flex: none; }
+
+/* ---------------------------------------------------------------- Popovers */
+.pop {
+  width: min(640px, calc(100vw - 32px));
+  max-height: min(640px, calc(100dvh - 32px));
+  padding: var(--space-6) var(--space-7) var(--space-7);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
-  padding: var(--space-6);
-  box-shadow: var(--shadow-sm);
-}
-.log-wrap h2::before { display: none; }
-
-.log {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  max-height: 340px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
   overflow-y: auto;
+  --accent: var(--sign);
+  --accent-chip-bg: var(--sign-chip-bg);
+  --accent-chip-ink: var(--sign-chip-ink);
 }
+.pop::backdrop { background: rgb(0 0 0 / 0.55); }
+.pop-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-5); }
+.pop h2 { margin: 0; font-size: var(--text-md); font-weight: 650; }
+.pop-sub { margin: var(--space-2) 0 var(--space-5); font-size: var(--text-sm); color: var(--text-muted); }
+.pop .icon-btn { background: transparent; border-color: transparent; }
+.pop .credit { margin-top: var(--space-6); }
+
+#vocab .chip {
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border-color: var(--line-strong);
+  cursor: pointer;
+  padding: 0 14px;
+  min-height: 44px;
+  font-size: var(--text-base);
+}
+#vocab .chip:hover { background: var(--manual-bg); color: var(--manual-ink); border-color: color-mix(in srgb, var(--manual) 55%, transparent); }
+#vocab .chip:active { transform: translateY(1px); }
+
+.log { display: flex; flex-direction: column; gap: var(--space-4); margin-top: var(--space-5); }
 .log:empty::before {
   content: "Nothing yet. Sign, or tap the microphone, and the conversation builds up here.";
   display: block;
@@ -583,9 +786,8 @@ body.demo { max-width: 1440px; margin: 0 auto; }
   font-size: var(--text-sm);
   color: var(--text-faint);
 }
-
 .msg {
-  max-width: 74%;
+  max-width: 80%;
   padding: var(--space-4) var(--space-5);
   border-radius: var(--radius-lg);
   font-size: var(--text-md);
@@ -601,26 +803,70 @@ body.demo { max-width: 1440px; margin: 0 auto; }
   margin-bottom: var(--space-2);
   opacity: 0.9;
 }
-.msg.deaf {
-  align-self: flex-start;
-  background: var(--sign-chip-bg);
-  border-color: color-mix(in srgb, var(--sign) 26%, transparent);
-  border-bottom-left-radius: var(--radius-sm);
-}
+.msg.deaf { align-self: flex-start; background: var(--sign-chip-bg); border-color: color-mix(in srgb, var(--sign) 26%, transparent); border-bottom-left-radius: var(--radius-sm); }
 .msg.deaf small { color: var(--sign-ink); }
-.msg.hearing {
-  align-self: flex-end;
-  background: var(--voice-chip-bg);
-  border-color: color-mix(in srgb, var(--voice) 26%, transparent);
-  border-bottom-right-radius: var(--radius-sm);
-}
+.msg.hearing { align-self: flex-end; background: var(--voice-chip-bg); border-color: color-mix(in srgb, var(--voice) 26%, transparent); border-bottom-right-radius: var(--radius-sm); }
 .msg.hearing small { color: var(--voice-ink); }
 
-@media (max-width: 700px) {
-  .msg { max-width: 92%; }
-  .topbar { align-items: flex-start; }
-  .topctl { width: 100%; justify-content: space-between; }
-  .out { font-size: var(--text-md); }
-  .caption { font-size: var(--text-lg); }
-  .banner { font-size: var(--text-md); }
+/* ---------------------------------------------------------------- Responsive */
+/* 1024-1279: same two columns, the avatar column narrows */
+@media (max-width: 1279px) {
+  .voice-body { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+  .brand .sub { display: none; }
+}
+@media (max-width: 1100px) {
+  .lang-text { display: none; }
+}
+
+/* Short desktop windows: tighten vertical rhythm before anything leaves the screen */
+@media (max-height: 760px) {
+  .sides { padding: 12px; gap: 12px; }
+  .side { padding: 12px 14px; gap: var(--space-4); }
+  .side-sign #stage { max-height: 56%; }
+  .credit { display: none; }
+}
+
+/* <1024 (one device on the table between two people): stack the panels, each
+   half the screen. The Deaf panel goes side by side inside (camera | sentence),
+   and "Flip" turns the hearing panel to face whoever sits opposite. */
+@media (max-width: 1023px) {
+  .sides { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 0.9fr) minmax(0, 1.1fr); }
+  .flip-btn { display: inline-flex !important; }
+  .hint-inline, .isl-card .credit { display: none; }
+  .voice-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+
+  .side-sign {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas: "head head" "stage sentence" "stage btns";
+  }
+  .side-sign .side-head { grid-area: head; }
+  .side-sign #stage { grid-area: stage; aspect-ratio: auto; max-height: none; height: auto; min-height: 0; }
+  .side-sign .sentence-card { grid-area: sentence; min-height: 0; }
+  .side-sign .row-btns { grid-area: btns; flex-wrap: wrap; }
+  .side-sign .row-btns select { flex: 1 1 100%; max-width: none; }
+  .side-sign .row-btns .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .side-sign .row-btns button { width: 44px; padding: 0; flex: 1 1 44px; }
+  .stage-hint { display: none; }
+
+  body.flipped .sides { grid-template-rows: minmax(0, 1.1fr) minmax(0, 0.9fr); }
+  body.flipped .side-voice { order: -1; transform: rotate(180deg); }
+  body.flipped .flip-btn { color: var(--accent-ink) !important; }
+}
+
+/* Phones: two halves no longer fit, so the page scrolls, with each panel
+   still a whole unit and the transcript above the avatar. */
+@media (max-width: 640px), (max-height: 560px) and (max-width: 1023px) {
+  body.demo { height: auto; min-height: 100dvh; overflow: visible; }
+  .sides { grid-template-rows: auto auto; padding: 10px; gap: 10px; }
+  .side-sign { display: flex; }
+  .side-sign #stage { aspect-ratio: 4 / 3; height: auto; }
+  .side-sign .sentence-card { flex: none; min-height: 200px; }
+  .voice-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(160px, auto) 420px; }
+  .topbar { height: auto; min-height: 56px; flex-wrap: wrap; row-gap: var(--space-4); padding: 10px 12px; }
+  .topctl { flex: 1 1 100%; min-width: 0; }
+  .topctl .pill { flex: 1 1 auto; max-width: none; min-width: 0; }
+  .lang select { max-width: 130px; }
+  .brand-logo { height: 28px; }
 }

@@ -3,6 +3,14 @@
 Newest first. One entry per decision: context, decision, consequence. Never delete an entry; add a new one that
 supersedes it. Numbers in entries come from the checks in testing.md.
 
+## D-030 The Hastaak page fits one screen, with no page scroll (2026-11-05)
+Across a table, nobody scrolls: the camera, the signed sentence, "They said" and the avatar must all be in view
+at 1440×900 and 1920×1080. The page is exactly the viewport (`demo.css`): two equal panels, and only the text areas
+inside them scroll. The status banner is a pill over the bottom of the camera picture. "They said" keeps every
+turn, with the newest highlighted. The tap-to-add vocabulary and the conversation history moved into popovers.
+The avatar canvas is portrait (420×480, same figure size: the motion never leaves its middle 62%). Below 1024px
+the panels stack, and **Flip** turns the hearing panel 180° to face the person opposite. Phones (<640px) scroll.
+
 ## D-029 Train Greetings/Pronouns on webcam-style video variants, without masks (2026-11-04)
 The model scored 95% on INCLUDE's studio clips but failed on real webcams, and on webcam-style copies of its own
 test clips it scored 53.9%. The planned approach (SAM 3.1 person masks, then new backgrounds) cost Meta credits and

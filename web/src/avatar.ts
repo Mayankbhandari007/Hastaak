@@ -94,7 +94,7 @@ export class Avatar {
 
   private draw([pose, left, right]: Frame, smile = false) {
     const { ctx, canvas } = this;
-    const s = canvas.width * 0.2;                                  // one shoulder width in pixels
+    const s = canvas.height * 0.2117;                              // one shoulder width in pixels (101.6 at 480 high)
     const ox = canvas.width / 2, oy = canvas.height * 0.4;
     const P = (x: number, y: number): [number, number] => [ox + x * s, oy + y * s];
     const pt = (arr: number[], i: number) => P(arr[2 * i], arr[2 * i + 1]);

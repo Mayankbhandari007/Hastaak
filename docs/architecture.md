@@ -43,7 +43,7 @@ server/
   .env.example            # names of settings (copy to .env)
 web/
   demo.html, index.html   # Hastaak page; playground/recorder page
-  src/demo.ts, demo.css   # Hastaak logic (both camera modes, mic, avatar/clips, log)
+  src/demo.ts, demo.css   # Hastaak logic (both camera modes, mic, avatar/clips, log); one-screen layout (D-030)
   src/avatar.ts           # 2D signing avatar (replays public/avatar/<SIGN>.json)
   src/wav.ts              # microphone recording → 16 kHz mono WAV
   src/main.ts, style.css  # playground logic; style.css is shared

@@ -61,6 +61,8 @@ const showDiag = (engine = lm?.delegate ?? "") => {
     (fps && fps < 8 ? " · slow: close other apps (Docker, extra browser tabs) to free memory and CPU" : "") +
     (lastAttempt ? ` · last attempt: ${lastAttempt}` : "");
 };
+/** Buttons hold an icon and a <span class="lbl">: change the words, keep the icon. */
+const setLabel = (btn: HTMLElement, text: string) => { btn.querySelector(".lbl")!.textContent = text; };
 const chip = (text: string, cls = "") => Object.assign(document.createElement("span"), { className: `chip ${cls}`, textContent: text });
 
 // ---------------------------------------------------------------- Server
@@ -95,7 +97,7 @@ async function start() {
     await video.play();
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    btn.textContent = "Camera on";
+    setLabel(btn, "Camera on");
     banner("Keep a neutral face for a second…");
     requestAnimationFrame(tick);
   } catch (err) {
@@ -120,7 +122,7 @@ async function startNative(btn: HTMLButtonElement) {
     const es = new EventSource("/vision/events");
     es.onmessage = (e) => onNativeEvent(JSON.parse(e.data));
     es.onerror = () => banner("Lost the native camera (is vision_server.py running?)", "bad");
-    btn.textContent = "Camera on (native)";
+    setLabel(btn, "Camera on (native)");
   } catch (err) {
     btn.disabled = false;
     banner(`Native camera unavailable: ${(err as Error).message}. Start python/vision_server.py or pick "In browser".`, "bad");
@@ -343,39 +345,48 @@ async function toggleMic() {
       clearTimeout(stopTimer);
       stream.getTracks().forEach((t) => t.stop());
       btn.classList.remove("rec");
-      btn.textContent = "🎤 Tap to talk";
+      setLabel(btn, "Tap to talk");
       void sendSpeech(new Blob(chunks, { type: recorder?.mimeType || "audio/webm" }));
     };
     recorder.start();
     btn.classList.add("rec");
-    btn.textContent = "■ Listening… tap to stop";
+    setLabel(btn, "Listening… tap to stop");
     stopTimer = window.setTimeout(() => recorder?.stop(), MAX_RECORD_MS);
   } catch (err) {
-    $("caption").textContent = `Microphone unavailable: ${(err as Error).message}`;
+    sayLine(`Microphone unavailable: ${(err as Error).message}`, "err");
   }
 }
 
 async function sendSpeech(blob: Blob) {
   const btn = $<HTMLButtonElement>("mic");
   btn.disabled = true;
-  $("caption").textContent = "…";
-  $("english").textContent = "";
+  sayLine("Transcribing…", "pending");
   try {
     const form = new FormData();
     form.append("file", await toWav16k(blob), "speech.wav");    // Muse Voice Transcribe accepts only WAV
     form.append("language", "unknown");
     const res = await fetch("/api/listen", { method: "POST", body: form }).then((r) => r.json());
     if (res.error && !res.text) throw new Error(res.error);
-    $("caption").textContent = res.text || "(nothing heard)";
-    $("english").textContent = res.english && res.english !== res.text ? `English: ${res.english}` : "";
+    sayLine(res.text || "(nothing heard)", "", res.english && res.english !== res.text ? `English: ${res.english}` : "");
     addLog("hearing", res.text || "(nothing heard)", res.glosses?.length ? `ISL: ${res.glosses.join(" · ")}` : "no matching signs");
     lastSigns = res.signs ?? [];
     await playSigns(lastSigns);
   } catch (err) {
-    $("caption").textContent = `Couldn't transcribe: ${(err as Error).message}`;
+    sayLine(`Couldn't transcribe: ${(err as Error).message}`, "err");
   } finally {
     btn.disabled = false;
   }
+}
+
+/** "They said" keeps every turn; the newest line is highlighted and scrolled into view. */
+function sayLine(text: string, cls = "", english = "") {
+  const list = $("transcript");
+  list.querySelector("li.pending")?.remove();
+  list.querySelector("li.latest")?.classList.remove("latest");
+  const li = Object.assign(document.createElement("li"), { className: `latest ${cls}`, textContent: text });
+  if (english) li.append(Object.assign(document.createElement("span"), { className: "en", textContent: english }));
+  list.append(li);
+  list.scrollTop = list.scrollHeight;
 }
 
 async function playSigns(signs: string[]) {
@@ -446,6 +457,14 @@ $("showVideo").addEventListener("click", () => setSignView(false));
 setSignView(localStorage.getItem("signView") !== "video");
 greet();
 $("mic").addEventListener("click", () => void toggleMic());
+// Small screens stack the panels; "Flip" turns the hearing panel to face the person opposite
+function setFlip(on: boolean) {
+  document.body.classList.toggle("flipped", on);
+  $("flip").setAttribute("aria-pressed", String(on));
+  localStorage.setItem("flip", on ? "1" : "0");
+}
+$("flip").addEventListener("click", () => setFlip(!document.body.classList.contains("flipped")));
+setFlip(localStorage.getItem("flip") === "1");
 $("replay").addEventListener("click", () => void playSigns(lastSigns));
 fetch("/clips/clips.json").then((r) => r.json()).then((j) => { clipIndex = j; }).catch(() => {});
 loadClassifier().then((c) => showVocabulary(c.labels)).catch(() => {});   // manual chips work before the camera starts
