@@ -1,4 +1,7 @@
-# Hastaak
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-white.png">
+  <img alt="Hastaak" src="docs/assets/logo-blue.png" width="320">
+</picture>
 
 Two-way Indian Sign Language ⇄ speech assistant. The Deaf person signs, and the listener hears a sentence in their
 language (Hindi, English and 9 more Indian languages). The hearing person speaks, and the Deaf person sees captions
