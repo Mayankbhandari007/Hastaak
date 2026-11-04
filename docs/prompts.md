@@ -1,7 +1,7 @@
 # Prompts
 
-The two prompts are constants in `server/main.py`. The provider call that uses them is `chat_json` in
-`server/sarvam.py`. This file lists what exists, how it is filled, and the fallbacks around it.
+The two prompts are constants in `server/main.py`. The call that uses them is `chat_json` in `server/meta.py`
+(Muse Spark 1.3). This file lists what exists, how it is filled, and the fallbacks around it.
 
 ## The prompts
 | Constant | Used by | Input (user message) | Reply (JSON) |
@@ -24,12 +24,15 @@ What each one asks for:
 
 Literal braces in the JSON examples are doubled (`{{ }}`) because the prompts use `str.format`.
 
-## Call settings (`sarvam.chat_json`)
-- Model `SARVAM_CHAT_MODEL` (default `sarvam-105b`), temperature 0.2, `max_tokens` 400.
-- `reasoning_effort: null` (off). With reasoning on, replies took about 10 s and often ran out of tokens with no
-  answer (D-006).
-- `response_format: {"type": "json_object"}`. Any `<think>…</think>` text is stripped, then the first `{…}` is
-  parsed. No JSON → an error → the fallback.
+## Call settings
+**Muse Spark (`meta.chat_json`):**
+- Model `META_CHAT_MODEL` (default `muse-spark-1.3`), `reasoning_effort` `META_REASONING` (default `minimal`).
+- Muse Spark always reasons and rejects `"none"`. Reasoning stays out of the reply text but counts toward
+  `max_completion_tokens` (2000), so that limit leaves room for it.
+- No `response_format`: the prompts end with the JSON shape, and the first `{…}` in the reply is parsed. No JSON →
+  an error → the fallback.
+- Tested on the seven test phrases (testing.md): 5 of 7 sign plans right, 7-11 s per `/api/listen`. Adjust
+  `META_REASONING` if replies are slow or wrong.
 
 ## Checks around the model
 - **Sentence:** the reply is used only if `text` is non-empty and under 400 characters. Otherwise the template
@@ -37,7 +40,7 @@ Literal braces in the JSON examples are doubled (`{{ }}`) because the prompts us
 - **Sign plan:** signs not in `clips.json` are dropped. If the keyword matcher found signs in the transcript, the
   model's signs must be among them; if none survive, the keyword signs are used. Repeated signs are merged (D-007).
 - **Offline:** no key or a failed call gives the template sentence (no audio), or keyword signs only. The reply's
-  `source` says which (`sarvam`, `template`, `keywords`).
+  `source` says which (`meta`, `template`, `keywords`).
 
 ## Keywords (`server/rules.py`)
 `KEYWORDS` maps each sign to the English and Hindi words that mean it. The sign's own name ("good morning")

@@ -11,8 +11,8 @@ doesn't sign, without an interpreter or writing things down. Hastaak sits betwee
 | Deaf → hearing | ISL signs in front of a camera | a natural sentence, shown and spoken in the listener's language |
 | Hearing → Deaf | speech in any Indian language or English | a caption, its English translation, and ISL sign videos |
 
-It is built for the Meta hackathon. The prototype uses non-Meta parts (MediaPipe, ONNX Runtime, Sarvam), so
-it could be tested without spending Meta credits. The swap is planned in meta-migration.md.
+It is built for the Meta hackathon. Language, speech, voice and person segmentation use Meta's models; sign
+recognition runs on the device (meta-models.md).
 
 ## What we learned from real tests
 These findings shaped the current design (details and numbers in testing.md and decisions.md):
@@ -38,32 +38,33 @@ These findings shaped the current design (details and numbers in testing.md and 
    are still or lowered.
 4. **Recognize:** SignNet scores the segment (top 3). Weak or unclear results become "Did you mean" buttons,
    not wrong words.
-5. **Speak:** Sarvam chat turns the signs (with their top-3 guesses and the question flag) into one sentence in
-   the listener's language. Sarvam text-to-speech voices it.
-6. **Listen:** Sarvam speech-to-text transcribes the reply. Sarvam chat picks matching signs, checked by keyword
-   rules, and the page plays the sign videos.
+5. **Speak:** Muse Spark turns the signs (with their top-3 guesses and the question flag) into one sentence in
+   the listener's language. Meta's MMS-TTS voices it, on the laptop.
+6. **Listen:** Muse Voice Transcribe transcribes the reply. Muse Spark picks matching signs, checked by keyword
+   rules, and the 2D avatar signs them (or the real-signer videos play).
 
 Every AI step has a deterministic fallback (template sentence, keyword sign matching), so the demo still runs offline.
 
 ## Decisions taken
 | Topic | Decision |
 | ----- | -------- |
-| Vocabulary | 11 INCLUDE signs (Greetings + Colours) for now |
+| Vocabulary | 47 INCLUDE signs (Adjectives, Greetings, Pronouns), model `hastaak_final47_synth` (trained with webcam-style variants, D-029) |
 | Tracking | MediaPipe (hands, pose lite, face), the same `.task` files in Python and the browser |
 | Classifier | SignNet: 2 × Conv1d + BiGRU, ~0.6M parameters, 32 frames × 156 features |
-| Recognition location | native Python (default when running) or in the browser (fallback) |
-| Language + speech | Sarvam behind one provider module (`server/sarvam.py`) |
-| Chat model | `sarvam-105b`, reasoning off, JSON replies |
-| Sign videos | one cropped INCLUDE clip per sign (`make_clips.py`) |
+| Recognition location | native Python with PyTorch (default when running) or in the browser (fallback) |
+| Language + speech | Meta: Muse Spark 1.3 + Muse Voice Transcribe (API), MMS-TTS voices (local) |
+| Chat model | `muse-spark-1.3`, reasoning `minimal`, JSON replies |
+| Signing output | 2D avatar replaying real signers' motion (default) or the real-signer videos |
+| Sign videos | one cropped INCLUDE clip per sign (`make_clips.py`; `--sam` cuts the signer out with SAM 3.1) |
+| Bystanders | SAM 3.1 signer lock, opt-in (`--signer-lock`) |
 | "No sign" | only from real NOTHING recordings, never synthetic |
 | Face | tracked for questions; zeroed for the model |
-| Out of scope (now) | continuous fluent signing, fingerspelling, signing avatar, signer lock |
+| Out of scope (now) | continuous fluent signing, fingerspelling, 3D avatar (SAM 3D Body) |
 
 ## Open points
 - Teach mode: record your own examples per sign straight into `data/own/` from the demo (not built).
 - The INCLUDE split is random per clip, so test signers are also in training. Reported accuracies are optimistic.
 - The eyebrow baseline is measured once at start and sometimes reads "raised" on a neutral face.
-- Muse Spark and Muse Voice Transcribe names and availability need checking (meta-migration.md).
 
 ## Risks
 | Risk | Mitigation |

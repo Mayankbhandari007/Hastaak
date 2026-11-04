@@ -6,6 +6,8 @@ import { isThumbsUp, BrowCalibrator } from "./actions";
 import { assignHands, pickFaceBlend, featurize } from "./features";
 import { Segmenter, resample, handPresence, segmenterForFps, MIN_HAND_PRESENCE, NOTHING } from "./segmenter";
 import { loadClassifier, type SignClassifier, type Prediction } from "./classifier";
+import { toWav16k } from "./wav";
+import { Avatar } from "./avatar";
 
 type SignEvent = { candidates: Prediction[]; question: boolean; manual?: boolean };
 
@@ -22,7 +24,7 @@ const MIN_CONFIDENCE = 0.35;      // weaker signs are dropped (and the user is t
 const BROW_RAISE = 0.15;          // brow level above the neutral baseline that marks a question
 const THUMB_MS = 350;             // a thumbs-up held this long sends the sentence
 const COOLDOWN_MS = 1500;         // ignore signs right after sending (the thumbs-up itself)
-const MAX_RECORD_MS = 25000;      // Sarvam's REST speech-to-text takes up to 30 s
+const MAX_RECORD_MS = 25000;      // keep each spoken turn short, so transcription stays quick
 const DEBUG_FRAMES = 300;         // "Save recording" in browser mode keeps this many raw feature frames
 
 let lm: Landmarkers | null = null;
@@ -360,7 +362,7 @@ async function sendSpeech(blob: Blob) {
   $("english").textContent = "";
   try {
     const form = new FormData();
-    form.append("file", blob, "speech.webm");
+    form.append("file", await toWav16k(blob), "speech.wav");    // Muse Voice Transcribe accepts only WAV
     form.append("language", "unknown");
     const res = await fetch("/api/listen", { method: "POST", body: form }).then((r) => r.json());
     if (res.error && !res.text) throw new Error(res.error);
@@ -380,6 +382,14 @@ async function playSigns(signs: string[]) {
   $<HTMLButtonElement>("replay").disabled = !signs.length;
   $("glosses").replaceChildren(...signs.map((s) => chip(pretty(s))));
   const chips = [...$("glosses").children];
+  $("greet").classList.remove("show");
+  if (showAvatar) {
+    await avatar.play(signs, (i) => {
+      chips.forEach((c, k) => c.classList.toggle("now", k === i));
+      $("clipLabel").textContent = i >= 0 ? pretty(signs[i]) : "";
+    });
+    return;
+  }
   for (const [i, s] of signs.entries()) {
     if (!clipIndex[s]) continue;
     chips.forEach((c, k) => c.classList.toggle("now", k === i));
@@ -399,7 +409,9 @@ async function playSigns(signs: string[]) {
 function addLog(who: "deaf" | "hearing", text: string, detail: string) {
   const el = Object.assign(document.createElement("div"), { className: `msg ${who}` });
   el.append(Object.assign(document.createElement("small"), { textContent: `${who === "deaf" ? "Deaf person" : "Hearing person"} · ${detail}` }), text);
-  $("log").prepend(el);
+  const log = $("log");
+  log.append(el);                       // oldest first, like a chat
+  log.scrollTop = log.scrollHeight;     // the log scrolls (demo.css): keep the newest message in view
 }
 
 // ---------------------------------------------------------------- Wiring
@@ -408,6 +420,31 @@ $("speakBtn").addEventListener("click", () => void speakSentence());
 $("undo").addEventListener("click", () => { sentence.pop(); renderSentence(); });
 $("clear").addEventListener("click", () => { sentence.length = 0; renderSentence(); });
 $("saveRecent").addEventListener("click", () => void saveRecent());
+
+// "In ISL" shows the 2D avatar (default) or the real signer's videos
+const avatar = new Avatar($<HTMLCanvasElement>("avatar"));
+let showAvatar = true;
+/** The avatar says hello: hands in namaste and a "Namaste, I am Hastaak" bubble by its head for a few seconds. */
+function greet() {
+  if (showAvatar) void avatar.greet((on) => $("greet").classList.toggle("show", on));
+}
+function setSignView(useAvatar: boolean) {
+  const switchedToAvatar = useAvatar && !showAvatar;
+  showAvatar = useAvatar;
+  $("avatarBox").hidden = !useAvatar;
+  if (!useAvatar) $("greet").classList.remove("show");
+  if (switchedToAvatar) greet();
+  clip.hidden = useAvatar;
+  $("showAvatar").classList.toggle("on", useAvatar);
+  $("showVideo").classList.toggle("on", !useAvatar);
+  $("showAvatar").setAttribute("aria-pressed", String(useAvatar));
+  $("showVideo").setAttribute("aria-pressed", String(!useAvatar));
+  localStorage.setItem("signView", useAvatar ? "avatar" : "video");
+}
+$("showAvatar").addEventListener("click", () => setSignView(true));
+$("showVideo").addEventListener("click", () => setSignView(false));
+setSignView(localStorage.getItem("signView") !== "video");
+greet();
 $("mic").addEventListener("click", () => void toggleMic());
 $("replay").addEventListener("click", () => void playSigns(lastSigns));
 fetch("/clips/clips.json").then((r) => r.json()).then((j) => { clipIndex = j; }).catch(() => {});

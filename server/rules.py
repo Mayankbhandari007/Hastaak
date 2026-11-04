@@ -1,4 +1,4 @@
-"""Deterministic fallbacks so the demo still works when the AI provider is down or slow."""
+"""Deterministic fallbacks so the demo still works when a Meta call fails or is slow."""
 import re
 
 # Extra ways people say each sign (English + Hindi). Sign names themselves ("good morning") always match.

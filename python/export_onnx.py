@@ -1,4 +1,4 @@
-"""Export a checkpoint to ONNX + metadata for the browser, and verify it.
+"""Export a checkpoint to ONNX + metadata for the browser (and PyTorch weights for vision_server.py), and verify it.
 Usage: python export_onnx.py runs/include_full/best.pt [--out ../web/public/models]"""
 import argparse
 import json
@@ -52,6 +52,9 @@ def main():
 
     (out / "signnet.json").write_text(json.dumps(
         {"labels": labels, "featureSpecVersion": ckpt.get("feature_spec_version", 1)}, indent=1))
+    # The same weights for PyTorch, which the native camera server (vision_server.py) runs
+    torch.save({"model": model.state_dict(), "labels": labels,
+                "feature_spec_version": ckpt.get("feature_spec_version", 1)}, out / "signnet.pt")
 
     sess = ort.InferenceSession(str(onnx_path))
     got = sess.run(None, {sess.get_inputs()[0].name: dummy.numpy()})[0]
@@ -59,7 +62,7 @@ def main():
     size_mb = onnx_path.stat().st_size / 1e6
     print(f"Exported {onnx_path} with the {method}: {len(labels)} signs, {size_mb:.1f} MB")
     print(f"Max difference vs PyTorch: {diff:.2e}  {'(OK)' if diff < 1e-3 else '(WARNING: larger than expected)'}")
-    print(f"Wrote {out / 'signnet.json'}")
+    print(f"Wrote {out / 'signnet.json'} and {out / 'signnet.pt'}")
 
 
 if __name__ == "__main__":

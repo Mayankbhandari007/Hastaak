@@ -58,7 +58,11 @@ def extract_one(job):
 
     arr = np.stack(frames) if frames else np.zeros((0, 156), np.float32)
     out.parent.mkdir(parents=True, exist_ok=True)
-    np.save(out, arr)
+    # Write to a temp file, then rename, so a stopped run never leaves a half-written .npy that a re-run would skip.
+    tmp = out.with_suffix(".npy.part")
+    with open(tmp, "wb") as f:
+        np.save(f, arr)
+    os.replace(tmp, out)
     return rel, "ok", len(arr)
 
 

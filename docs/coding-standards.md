@@ -18,10 +18,10 @@ Read alongside architecture.md and data-formats.md. Root CLAUDE.md is the index 
 4. **The feature spec is a contract.** `FEATURE_SPEC_VERSION` (currently 1) is written into `signnet.json` by
    `export_onnx.py`. The browser refuses a model with another version. Changing the layout means a new version,
    re-extraction and retraining.
-5. **One provider module.** Only `server/sarvam.py` calls Sarvam. It exposes `chat_json`, `transcribe` and
-   `speak`. A Meta provider is a second module with the same three functions, picked by `PROVIDER` in `.env`.
+5. **One Meta module.** Only `server/meta.py` calls Meta. The backend uses its `chat_json`, `transcribe` and
+   `speak`; the Python tools use its `find_people` and `person_masks` (SAM 3.1).
 6. **No secret in code, logs, the browser or git.** The API key lives only in `server/.env`.
-7. **Every AI step has a fallback.** If the provider fails, the backend answers with the rules in
+7. **Every AI step has a fallback.** If a Meta call fails, the backend answers with the rules in
    `server/rules.py` and says so (`source`, `error`). The page never hangs on a failed call.
 8. **Measure, then keep or revert.** A change meant to improve recognition is kept only if it measurably helps
    (testing.md). Record it in decisions.md either way. No experimental code is left switched off "for later".
@@ -47,7 +47,7 @@ Read alongside architecture.md and data-formats.md. Root CLAUDE.md is the index 
 - Prompts are constants in `server/main.py` (prompts.md). Model replies are JSON. Every field is validated
   (signs must exist in the vocabulary) before use.
 - Pydantic models for request bodies. Validate the language against `LANGUAGES`.
-- Timeouts on every provider call (chat 20 s, speech 30 s).
+- Timeouts on every Meta call (chat 20 s, speech 30 s).
 
 ## Models and data
 - A training run goes to `python/runs/<name>/`. Never overwrite a run you have exported; use a new name.

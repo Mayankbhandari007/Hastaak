@@ -4,11 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Hastaak</title>
+  <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
 </head>
 <body class="demo">
   <header class="topbar">
     <div>
-      <h1>Hastaak</h1>
+      <h1><img class="brand-logo" src="/brand/hastaak-logo-light.svg" alt="Hastaak" width="1257" height="386" /></h1>
       <p class="sub">Indian Sign Language ⇄ speech, face to face</p>
     </div>
     <div class="topctl">
@@ -61,9 +62,18 @@
       <div class="label">They said</div>
       <div id="caption" class="out caption">–</div>
       <div id="english" class="english"></div>
-      <div class="label">In ISL</div>
+      <div class="label isl-head">In ISL
+        <span class="seg" role="group" aria-label="Show signs as">
+          <button id="showAvatar" class="on" aria-pressed="true">Avatar</button>
+          <button id="showVideo" aria-pressed="false">Real signer</button>
+        </span>
+      </div>
       <div class="player">
-        <video id="clip" playsinline muted></video>
+        <div id="avatarBox" class="avatar-box">
+          <canvas id="avatar" width="508" height="480" aria-label="Signing avatar"></canvas>
+          <div id="greet" class="greet" role="status">Namaste, I am Hastaak<small>I'll sign what you say</small></div>
+        </div>
+        <video id="clip" playsinline muted hidden></video>
         <div id="clipLabel" class="clip-label"></div>
       </div>
       <div id="glosses" class="chips"></div>

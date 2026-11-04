@@ -1,14 +1,17 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-white.png">
-  <img alt="Hastaak" src="docs/assets/logo-blue.png" width="320">
-</picture>
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="web/public/brand/hastaak-logo-light.svg">
+    <img alt="Hastaak" src="web/public/brand/hastaak-logo.svg" width="360">
+  </picture>
+</h1>
 
 Two-way Indian Sign Language ⇄ speech assistant. The Deaf person signs, and the listener hears a sentence in their
 language (Hindi, English and 9 more Indian languages). The hearing person speaks, and the Deaf person sees captions
 plus ISL sign videos.
 
     web/      browser app: demo.html (Hastaak) and index.html (playground / recorder)
-    server/   FastAPI backend: keeps the API key, calls the AI provider (chat, speech-to-text, text-to-speech)
+    server/   FastAPI backend: keeps the API key, calls Meta's models (Muse Spark, Muse Voice Transcribe,
+              SAM 3.1) and runs Meta's MMS-TTS voices
     python/   tracking, training, evaluation, ONNX export, sign videos, native camera server
     docs/     how everything works and why: start with CLAUDE.md (the index)
 
@@ -28,10 +31,11 @@ First-time setup (virtual environments, `npm install`, the `.env` file) is in
     cd python
     .venv\Scripts\python vision_server.py
 
-Open http://localhost:5173/demo.html in Chrome. Check it says **Connected: &lt;provider&gt;** and **Native camera (faster)**,
+Open http://localhost:5173/demo.html in Chrome. Check it says **Connected: Meta** and **Native camera (faster)**,
 then press **Start camera**.
 - **Deaf → hearing:** raise your hands, sign, lower them. Repeat, then hold a thumbs-up (or press Speak).
-- **Hearing → Deaf:** tap the microphone, speak, tap again.
+- **Hearing → Deaf:** tap the microphone, speak, tap again. The avatar signs the reply (or switch to **Real signer**).
+- Add `--signer-lock` to `vision_server.py` to let SAM 3.1 ignore bystanders (see docs/meta-models.md).
 
 ## Documentation
 | Read | For |
@@ -46,7 +50,7 @@ then press **Start camera**.
 | [docs/testing.md](docs/testing.md) | how accuracy is checked, and the results |
 | [docs/security.md](docs/security.md) | API key, recordings of people, dataset licence |
 | [docs/coding-standards.md](docs/coding-standards.md) | rules for changing code |
-| [docs/meta-migration.md](docs/meta-migration.md) | moving to Meta's models |
+| [docs/meta-models.md](docs/meta-models.md) | which Meta model does what, costs, tracking |
 | [docs/decisions.md](docs/decisions.md) | every design decision and the evidence behind it |
 
 Sign data and videos: INCLUDE dataset (AI4Bharat), CC BY-NC-SA 4.0 (non-commercial).

@@ -3,3 +3,9 @@ uvicorn[standard]>=0.30
 httpx>=0.27
 python-multipart>=0.0.9
 python-dotenv>=1.0
+# MMS-TTS (Meta's open-weights voices, run locally by meta.py). On a machine without a GPU, install the smaller
+# CPU build of torch first:  pip install torch --index-url https://download.pytorch.org/whl/cpu
+torch>=2.2
+transformers>=4.45
+uroman>=1.3
+numpy>=1.26

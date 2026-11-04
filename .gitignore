@@ -5,6 +5,7 @@
 python/data/
 python/recordings/
 python/runs/
+python/sapiens_out/
 
 # Python
 __pycache__/

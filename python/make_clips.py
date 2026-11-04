@@ -1,9 +1,12 @@
 """Build the sign clip dictionary for the web app: one short, cropped WebM per sign from INCLUDE.
-Usage: python make_clips.py [--out ../web/public/clips]
+Usage: python make_clips.py [--sam] [--out ../web/public/clips]
+--sam: SAM 3.1 (Meta Model API, key in server/.env) cuts the signer out of each clip onto one plain background,
+so signs from different recordings look like one signer. About 70 frames per sign: ~$0.15 for 11 signs.
 Writes <SIGN>.webm plus clips.json ({sign: file}). INCLUDE is CC BY-NC-SA 4.0: credit AI4Bharat."""
 import argparse
 import csv
 import json
+import sys
 from collections import defaultdict
 from pathlib import Path
 
@@ -16,6 +19,33 @@ from segmenter import hand_presence, sign_span
 
 PAD = 6            # frames kept before and after the sign
 OUT_H = 480
+BACKGROUND = (236, 236, 236)     # BGR: the plain backdrop signers are placed on with --sam
+
+
+def signer_cutouts(video_path: str, frames: list):
+    """Replace everything but the signer with BACKGROUND, using SAM 3.1 person masks for every frame."""
+    sys.path.insert(0, str(Path(__file__).parent.parent / "server"))
+    import meta                                            # the one module that calls Meta (server/meta.py)
+    meta.load_env()
+    by_frame = meta.person_masks(video_path)
+    h, w = frames[0].shape[:2]
+    area: dict[str, int] = defaultdict(int)                # the signer is the person with the most pixels
+    for objs in by_frame.values():
+        for oid, local, _ in objs:
+            area[oid] += int(local.sum())
+    if not area:
+        raise RuntimeError(f"SAM 3.1 found no person in {video_path}")
+    signer = max(area, key=area.get)
+    out, last = [], np.ones((h, w, 1), np.float32)          # until the first mask: keep the frame as is
+    for i, fr in enumerate(frames):
+        for oid, local, (left, top) in by_frame.get(i, []):
+            if oid == signer:
+                full = np.zeros((h, w), np.float32)
+                bh, bw = min(local.shape[0], h - top), min(local.shape[1], w - left)
+                full[top:top + bh, left:left + bw] = local[:bh, :bw]
+                last = cv2.GaussianBlur(full, (7, 7), 0)[..., None]      # soft edge
+        out.append((fr * last + np.array(BACKGROUND, np.float32) * (1 - last)).astype(np.uint8))
+    return out
 
 
 def pick_clip(rows, feats):
@@ -55,6 +85,7 @@ def main():
     ap.add_argument("--videos", default="data/include")
     ap.add_argument("--feats", default="data/include_feats")
     ap.add_argument("--out", default="../web/public/clips")
+    ap.add_argument("--sam", action="store_true", help="cut signers out with SAM 3.1 (uses Meta credits)")
     args = ap.parse_args()
 
     by_label = defaultdict(list)
@@ -80,6 +111,8 @@ def main():
             frames.append(frame)
             ok, frame = cap.read()
         cap.release()
+        if args.sam:
+            frames = signer_cutouts(str(Path(args.videos) / video), frames)
         frames = frames[max(0, s - PAD): min(len(frames), e + PAD)]
         x0, y0, x1, y1 = crop_box(frames[0], pose, 1000 * (k + 1))
         size = (round((x1 - x0) * OUT_H / (y1 - y0)) // 2 * 2, OUT_H)

@@ -1,9 +1,8 @@
 """Hastaak backend: keeps the API key, turns signs into speech and speech into signs.
 Run:  uvicorn main:app --reload --port 8000     (from the server folder)
 The web app's dev server proxies /api here."""
-import importlib
+import asyncio
 import json
-import os
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -11,11 +10,11 @@ from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+import meta  # the one module that talks to Meta (rule 5)
 from rules import KEYWORDS, keyword_signs, pretty, template_sentence
 
 HERE = Path(__file__).parent
 load_dotenv(HERE / ".env")
-provider = importlib.import_module(os.environ.get("PROVIDER", "sarvam"))
 
 WEB_PUBLIC = HERE.parent / "web" / "public"
 LANGUAGES = {"en-IN": "English", "hi-IN": "Hindi", "bn-IN": "Bengali", "ta-IN": "Tamil", "te-IN": "Telugu",
@@ -26,9 +25,15 @@ app = FastAPI(title="Hastaak")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_methods=["*"], allow_headers=["*"])
 
 
+@app.on_event("startup")
+async def warm_up():
+    """Load MMS-TTS in the background, so the first spoken sentence is fast."""
+    asyncio.get_running_loop().run_in_executor(None, meta.warm_up)
+
+
 def recognizable_signs() -> list[str]:
-    meta = json.loads((WEB_PUBLIC / "models" / "signnet.json").read_text())
-    return [l for l in meta["labels"] if l != "NOTHING"]
+    model = json.loads((WEB_PUBLIC / "models" / "signnet.json").read_text())
+    return [l for l in model["labels"] if l != "NOTHING"]
 
 
 def showable_signs() -> list[str]:
@@ -77,7 +82,7 @@ Reply with JSON: {{"english": "<faithful English translation>", "signs": ["<SIGN
 
 @app.get("/api/health")
 def health():
-    return {"provider": provider.__name__, "configured": bool(os.environ.get("SARVAM_API_KEY", "").strip()),
+    return {"provider": "Meta", "configured": meta.has_key(),
             "signs": recognizable_signs(), "showable": showable_signs(), "languages": LANGUAGES}
 
 
@@ -90,16 +95,16 @@ async def sentence(req: SentenceIn):
     result = {"text": template_sentence(top, question), "source": "template", "signs": top}
     try:
         payload = [{"candidates": [c.model_dump() for c in s.candidates], "question": s.question} for s in req.signs]
-        out = await provider.chat_json(SENTENCE_PROMPT.format(language=LANGUAGES[language]), json.dumps(payload))
+        out = await meta.chat_json(SENTENCE_PROMPT.format(language=LANGUAGES[language]), json.dumps(payload))
         text = str(out.get("text", "")).strip()
         if text and len(text) < 400:
-            result.update(text=text, source=provider.__name__,
+            result.update(text=text, source="meta",
                           signs=[s for s in out.get("signs", []) if isinstance(s, str)] or top)
     except Exception as e:                      # keep going with the template sentence
         result["error"] = str(e)
     if req.speak and result["text"]:
         try:
-            result["audio"] = await provider.speak(result["text"], language)
+            result["audio"] = await meta.speak(result["text"], language)
         except Exception as e:
             result["error"] = f"{result.get('error', '')} {e}".strip()
     return result
@@ -110,7 +115,7 @@ async def listen(file: UploadFile = File(...), language: str = Form("unknown")):
     """Hearing → Deaf: speech → caption → ISL sign sequence (only signs that have a clip)."""
     audio = await file.read()
     try:
-        heard = await provider.transcribe(audio, file.filename or "speech.webm",
+        heard = await meta.transcribe(audio, file.filename or "speech.webm",
                                           file.content_type or "audio/webm", language)
     except Exception as e:
         return {"text": "", "signs": [], "source": "none", "error": str(e)}
@@ -119,13 +124,13 @@ async def listen(file: UploadFile = File(...), language: str = Form("unknown")):
               "signs": keyword_signs(heard["text"], vocab), "source": "keywords"}
     if heard["text"]:
         try:
-            out = await provider.chat_json(PLAN_PROMPT.format(signs=sign_meanings(vocab)), heard["text"])
+            out = await meta.chat_json(PLAN_PROMPT.format(signs=sign_meanings(vocab)), heard["text"])
             signs = [s for s in out.get("signs", []) if s in vocab]
             # Without reasoning the model sometimes adds signs that weren't said ("which colour…" → HOW_ARE_YOU).
             # When keywords matched, they act as a check: keep the model's order, drop what keywords didn't find.
             if result["signs"]:
                 signs = [s for s in signs if s in result["signs"]] or result["signs"]
-            result.update(english=out.get("english"), source=provider.__name__,
+            result.update(english=out.get("english"), source="meta",
                           signs=[s for i, s in enumerate(signs) if i == 0 or s != signs[i - 1]])
         except Exception as e:
             result["error"] = str(e)

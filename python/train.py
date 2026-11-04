@@ -51,7 +51,7 @@ def pick_device():
     return "cpu"
 
 
-def load_items(manifest, feats, labels_filter):
+def load_items(manifest, feats, labels_filter, use_own=True):
     items = {"train": [], "val": [], "test": []}
     with open(manifest) as f:
         for r in csv.DictReader(f):
@@ -60,7 +60,7 @@ def load_items(manifest, feats, labels_filter):
             p = feat_path(feats, r["video"])
             if p.exists() and np.load(p, mmap_mode="r").shape[0] > 0:
                 items[r["split"]].append((str(p), r["label"]))
-    for path, label, split in own_recordings():
+    for path, label, split in (own_recordings() if use_own else []):
         if not labels_filter or label in labels_filter:
             items[split].append((path, label))
     return items
@@ -69,7 +69,7 @@ def load_items(manifest, feats, labels_filter):
 def choose_labels(args):
     with open(args.manifest) as f:
         all_labels = sorted({r["label"] for r in csv.DictReader(f)} |
-                            {l for _, l, _ in own_recordings() if l != NOTHING})
+                            {l for _, l, _ in (own_recordings() if not args.no_own else []) if l != NOTHING})
     if args.labels:
         wanted = {l.strip().upper() for l in Path(args.labels).read_text().splitlines() if l.strip()}
         missing = wanted - set(all_labels)
@@ -104,11 +104,12 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--name", default="run")
     ap.add_argument("--no-nothing", action="store_true", help="ignore NOTHING (no sign) recordings")
+    ap.add_argument("--no-own", action="store_true", help="train only on the manifest's videos (skip data/own)")
     args = ap.parse_args()
 
     torch.manual_seed(args.seed)
     labels = set(choose_labels(args)) | (set() if args.no_nothing else {NOTHING})
-    items = load_items(args.manifest, args.feats, labels)
+    items = load_items(args.manifest, args.feats, labels, use_own=not args.no_own)
     labels = sorted({l for split in items.values() for _, l in split})    # only labels with data
     l2i = {l: i for i, l in enumerate(labels)}
     own = sum(p.endswith(".json") for split in items.values() for p, _ in split)

@@ -1,51 +1,451 @@
+/* Shared base: design tokens, resets, typography, form controls and the
+   components both pages use (stage, card, chip, bar, preds). Page-specific
+   layout lives in demo.css. Dark only: the camera is the subject on both
+   pages, and a bright screen throws light on the face MediaPipe is tracking. */
+
+/* ---------------------------------------------------------------- Tokens */
+:root {
+  /* Neutrals, cool-tinted so the accents stay the only warm/saturated marks */
+  --bg: #0e1113;
+  --surface: #171a1d;
+  --surface-2: #1f2327;
+  --surface-3: #272c31;
+  --line: #2c3238;
+  --line-strong: #3a424a;
+
+  /* Text. Every value below is >= 4.5:1 on --surface and --surface-2 */
+  --text: #f2f5f7;
+  --text-muted: #a8b2ba;
+  --text-faint: #8b959d;
+
+  /* The two conversation channels. Each panel sets --accent-* from one of
+     these pairs, and every component inside reads --accent-*, so a chip,
+     button or bubble is tinted by the side of the conversation it belongs to. */
+  --sign: #14b88a;          /* Deaf -> hearing */
+  --sign-ink: #5eeac4;
+  --sign-contrast: #04231b;
+  --sign-chip-bg: #10382e;
+  --sign-chip-ink: #9df5d8;
+  --sign-soft: #0d2b24;
+
+  --voice: #2563eb;         /* hearing -> Deaf */
+  --voice-ink: #93c5fd;
+  --voice-contrast: #ffffff;
+  --voice-chip-bg: #13294b;
+  --voice-chip-ink: #bfdbfe;
+  --voice-soft: #111f38;
+
+  /* Defaults, overridden per panel in demo.css */
+  --accent: var(--sign);
+  --accent-ink: var(--sign-ink);
+  --accent-contrast: var(--sign-contrast);
+  --accent-chip-bg: var(--sign-chip-bg);
+  --accent-chip-ink: var(--sign-chip-ink);
+  --accent-soft: var(--sign-soft);
+
+  /* Status */
+  --ok: #14b88a;
+  --ok-ink: #5eeac4;
+  --ok-soft: #123d33;      /* weighted to read as green at a glance, like --busy-soft */
+  --busy: #f59e0b;          /* mid-action: signing, thinking, recording */
+  --busy-ink: #fcd34d;
+  --busy-contrast: #2a1a02;
+  --busy-soft: #33240a;
+  --bad: #dc2626;
+  --bad-ink: #fca5a5;
+  --bad-soft: #3a1518;
+  --manual: #6d64e8;        /* chosen by hand, not recognized */
+  --manual-bg: #262157;
+  --manual-ink: #c9c4ff;
+
+  --focus: #7dd3fc;
+
+  /* Type: fixed rem steps, ~1.2 ratio. Product UI, so no fluid headings. */
+  --text-2xs: 0.6875rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-md: 1.0625rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 1.75rem;
+
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-7: 20px;
+  --space-8: 24px;
+  --space-9: 32px;
+  --space-10: 40px;
+
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow: 0 4px 12px -2px rgb(0 0 0 / 0.45), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 16px 32px -8px rgb(0 0 0 / 0.55), 0 4px 10px -4px rgb(0 0 0 / 0.4);
+
+  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --fast: 140ms;
+  --base: 200ms;
+
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ---------------------------------------------------------------- Reset */
 * { box-sizing: border-box; }
-body { margin: 0; padding: 16px; background: #141414; color: #eee;
-       font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
-h1 { font-size: 20px; font-weight: 500; margin: 0 0 4px; }
-.sub { margin: 0 0 12px; color: #aaa; font-size: 14px; }
-.wrap { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 16px; max-width: 1400px; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  padding: clamp(var(--space-5), 2.5vw, var(--space-8));
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { text-wrap: balance; }
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+:focus:not(:focus-visible) { outline: none; }
+
+::selection { background: color-mix(in srgb, var(--accent) 40%, transparent); }
+
+/* ---------------------------------------------------------------- Headings */
+h1 {
+  font-size: var(--text-xl);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--space-1);
+}
+
+.sub {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* Hastaak icon beside the playground title (light variant: the page is dark) */
+.brand-title { display: flex; align-items: center; gap: var(--space-4); }
+.brand-icon { height: 1.4em; width: auto; flex: none; }
+
+/* ---------------------------------------------------------------- Layout (playground) */
+.wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: var(--space-6);
+  max-width: 1440px;
+}
 @media (max-width: 960px) { .wrap { grid-template-columns: 1fr; } }
 
-#stage { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 12px; overflow: hidden; }
-#stage video, #stage canvas { position: absolute; inset: 0; width: 100%; height: 100%;
-                              object-fit: contain; transform: scaleX(-1); }
+/* ---------------------------------------------------------------- Camera stage */
+#stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.03), var(--shadow);
+}
 
-.controls { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
-.controls label { font-size: 14px; color: #ccc; display: flex; align-items: center; gap: 4px; }
-button { font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 8px; border: 1px solid #555;
-         background: #262626; color: #eee; cursor: pointer; }
-button:hover { background: #303030; }
-button.primary { background: #185fa5; border-color: #185fa5; }
-button:disabled { opacity: 0.6; cursor: default; }
-select { font: inherit; font-size: 14px; padding: 6px 8px; border-radius: 8px; border: 1px solid #555;
-         background: #262626; color: #eee; margin-left: 6px; }
-#status { font-size: 13px; color: #aaa; margin: 10px 0 0; min-height: 18px; }
+/* Placeholder sits behind the video and canvas, so it is covered the moment
+   a stream paints. No JS hook exists for "camera off", and none is needed. */
+#stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(60% 60% at 50% 45%, rgb(255 255 255 / 0.035), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52' viewBox='0 0 24 24' fill='none' stroke='%235b666e' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8.5A2.5 2.5 0 0 1 5.5 6h2L9 4h6l1.5 2h2A2.5 2.5 0 0 1 21 8.5v8A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z'/%3E%3Ccircle cx='12' cy='12.5' r='3.5'/%3E%3C/svg%3E")
+    center / 52px no-repeat;
+}
 
-.card { background: #1e1e1e; border: 1px solid #333; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
-.card h2 { font-size: 15px; font-weight: 500; margin: 0 0 10px; color: #ccc; }
-.big { font-size: 20px; font-weight: 500; padding: 8px 12px; border-radius: 8px; text-align: center;
-       background: #2a2a2a; color: #888; transition: background .15s, color .15s; }
-.big.on { background: #0f6e56; color: #e1f5ee; }
-.bar { position: relative; height: 14px; background: #2a2a2a; border-radius: 7px; overflow: hidden; margin: 8px 0 4px; }
-.bar .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #7f77dd; }
-.bar .mark { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #fac775; display: none; }
-.row { display: flex; justify-content: space-between; font-size: 13px; color: #aaa; margin: 4px 0; }
-.row b { color: #eee; font-weight: 500; }
-.fingers { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
-.f { font-size: 12px; text-align: center; padding: 6px 2px; border-radius: 6px; background: #2a2a2a; color: #777; }
-.f.up { background: #3c3489; color: #eeedfe; }
-input[type="range"] { width: 100%; }
+#stage video,
+#stage canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform: scaleX(-1);
+}
 
-.big.active { background: #854f0b; color: #faeeda; }
-.preds { list-style: none; padding: 0; margin: 10px 0 6px; }
-.preds li { position: relative; display: flex; justify-content: space-between; padding: 6px 10px;
-            margin-bottom: 6px; border-radius: 6px; background: #2a2a2a; font-size: 14px; overflow: hidden; }
-.preds li .fillbar { position: absolute; left: 0; top: 0; bottom: 0; background: #3c3489; }
+/* ---------------------------------------------------------------- Controls */
+.controls {
+  display: flex;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.controls label {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+button {
+  font: inherit;
+  font-size: var(--text-base);
+  font-weight: 550;
+  line-height: 1.2;
+  padding: 10px 16px;
+  min-height: 40px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  transition: background var(--fast) var(--ease), border-color var(--fast) var(--ease),
+              color var(--fast) var(--ease), transform var(--fast) var(--ease);
+}
+button:hover:not(:disabled) { background: var(--surface-3); border-color: #49535c; }
+button:active:not(:disabled) { transform: translateY(1px); }
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+button.primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 86%, white);
+  border-color: color-mix(in srgb, var(--accent) 86%, white);
+}
+
+button:disabled {
+  opacity: 1;
+  background: var(--surface-2);
+  border-color: var(--line);
+  color: var(--text-faint);
+  cursor: not-allowed;
+}
+
+select {
+  font: inherit;
+  font-size: var(--text-base);
+  padding: 9px 10px;
+  min-height: 40px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+select:hover { border-color: #49535c; background: var(--surface-3); }
+
+input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+#status {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin: var(--space-5) 0 0;
+  min-height: 18px;
+}
+
+/* ---------------------------------------------------------------- Card (playground) */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  margin-bottom: var(--space-5);
+}
+
+.card h2 {
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0 0 var(--space-5);
+  color: var(--text-faint);
+}
+
+/* ---------------------------------------------------------------- Readouts */
+.big {
+  font-size: var(--text-md);
+  font-weight: 600;
+  padding: var(--space-5) var(--space-5);
+  border-radius: var(--radius);
+  text-align: center;
+  background: var(--surface-2);
+  color: var(--text-faint);
+  border: 1px solid var(--line);
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease),
+              border-color var(--fast) var(--ease);
+}
+.big.on {
+  background: var(--ok-soft);
+  color: var(--ok-ink);
+  border-color: color-mix(in srgb, var(--ok) 45%, transparent);
+}
+.big.active {
+  background: var(--busy-soft);
+  color: var(--busy-ink);
+  border-color: color-mix(in srgb, var(--busy) 45%, transparent);
+}
+
+.bar {
+  position: relative;
+  height: 10px;
+  background: var(--surface-3);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  margin: var(--space-4) 0 var(--space-2);
+}
+.bar .fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background: var(--manual);
+  border-radius: inherit;
+}
+.bar .mark {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: var(--busy-ink);
+  display: none;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-5);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin: var(--space-2) 0;
+}
+.row b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.fingers { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--space-3); }
+.f {
+  font-size: var(--text-xs);
+  text-align: center;
+  padding: var(--space-3) var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-faint);
+  border: 1px solid var(--line);
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.f.up { background: var(--manual-bg); color: var(--manual-ink); border-color: color-mix(in srgb, var(--manual) 40%, transparent); }
+
+.preds { list-style: none; padding: 0; margin: var(--space-5) 0 var(--space-3); }
+.preds li {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-size: var(--text-sm);
+  overflow: hidden;
+}
+.preds li .fillbar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--manual-bg);
+}
 .preds li span, .preds li b { position: relative; }
-.preds li:first-child { font-weight: 500; }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-height: 28px; }
-.chip { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: #0f6e56; color: #e1f5ee; }
-.vocab-details { margin-top: 10px; font-size: 13px; color: #aaa; }
-.vocab-details summary { cursor: pointer; }
-.vocab { margin-top: 6px; line-height: 1.6; color: #ccc; max-height: 160px; overflow-y: auto; }
-.hint { font-size: 12px; color: #888; margin: 8px 0 0; line-height: 1.5; }
+.preds li b { font-variant-numeric: tabular-nums; }
+.preds li:first-child { font-weight: 600; }
+
+/* ---------------------------------------------------------------- Chips */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  min-height: 28px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  font-weight: 550;
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-chip-bg);
+  color: var(--accent-chip-ink);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  transition: background-color var(--fast) var(--ease), border-color var(--fast) var(--ease),
+              color var(--fast) var(--ease);
+}
+
+/* The question flag is content, so it keeps full contrast and sits after the
+   label via flex order -- which leaves ::after free for the remove icon. */
+.chip.q::before {
+  content: "?";
+  order: 1;
+  margin-left: 5px;
+  font-weight: 750;
+}
+
+/* ---------------------------------------------------------------- Vocabulary */
+.vocab-details { margin-top: var(--space-5); font-size: var(--text-sm); color: var(--text-muted); }
+.vocab-details summary {
+  cursor: pointer;
+  padding: var(--space-3) 0;
+  color: var(--text-muted);
+  transition: color var(--fast) var(--ease);
+  width: fit-content;
+}
+.vocab-details summary:hover { color: var(--text); }
+.vocab-details summary::marker { color: var(--text-faint); }
+
+.vocab { margin-top: var(--space-3); line-height: 1.6; color: var(--text-muted); max-height: 160px; overflow-y: auto; }
+
+.hint {
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  margin: var(--space-5) 0 0;
+  line-height: 1.6;
+  max-width: 70ch;
+}
+
+/* ---------------------------------------------------------------- Scrollbars */
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

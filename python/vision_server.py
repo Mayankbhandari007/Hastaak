@@ -3,7 +3,9 @@ SignNet natively (much faster than in a busy browser), and streams the preview a
 The last RECORD_S seconds are kept so "Save recording" can write them to python/recordings/ for debugging.
 Run:  python vision_server.py                 (port 8001; the web dev server proxies /vision here)
       python vision_server.py --camera 1      (another webcam)
-      python vision_server.py --video clip.mp4 (a looping video file instead of the webcam)"""
+      python vision_server.py --video clip.mp4 (a looping video file instead of the webcam)
+      python vision_server.py --signer-lock   (SAM 3.1 picks the signer when 2+ people are in view;
+                                               needs MODEL_API_KEY in server/.env; slower tracking)"""
 import argparse
 import asyncio
 import json
@@ -16,7 +18,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-import onnxruntime as ort
+import torch
 import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
@@ -24,7 +26,10 @@ from fastapi.responses import StreamingResponse
 from common import HAND_CONNECTIONS, UPPER_BODY, create_landmarkers, is_thumbs_up, to_mp_image
 from dataset import model_input
 from features import assign_hands, featurize, pick_face_blend, shoulder_frame
+from model import SignNet
 from segmenter import Segmenter, hand_presence, low_fps_settings
+
+torch.set_num_threads(1)       # the model is tiny; leave the CPU cores to MediaPipe
 
 MODEL_DIR = Path(__file__).parent.parent / "web" / "public" / "models"     # same model the browser uses
 RECORDINGS = Path(__file__).parent / "recordings"
@@ -39,16 +44,77 @@ FACE_LINES = [[70, 63, 105, 66, 107], [336, 296, 334, 293, 300],
               [61, 40, 37, 0, 267, 270, 291, 321, 314, 17, 84, 91, 61]]
 
 
+class SignerLock:
+    """SAM 3.1 picks the signer when more than one person is in view: the largest, most central person.
+    Called at most every LOCK_EVERY_S and only with 2+ people, so one signer alone costs no credits."""
+    LOCK_EVERY_S, LOCK_TTL_S = 3.0, 10.0
+
+    def __init__(self, enabled: bool):
+        self.meta = None
+        if enabled:
+            sys.path.insert(0, str(Path(__file__).parent.parent / "server"))
+            import meta                                    # the one module that calls Meta (server/meta.py)
+            meta.load_env()
+            self.meta = meta if meta.has_key() else None
+        self.box, self.box_t, self.asked_t, self.busy, self.calls, self.failures = None, 0.0, 0.0, False, 0, 0
+
+    @property
+    def state(self) -> str:
+        return "off" if not self.meta else ("SAM" if self.fresh() else "ready")
+
+    def fresh(self) -> bool:
+        return self.box is not None and time.time() - self.box_t < self.LOCK_TTL_S
+
+    def maybe_ask(self, frame, people: int):
+        if not self.meta or self.busy or people < 2 or time.time() - self.asked_t < self.LOCK_EVERY_S:
+            return
+        self.busy, self.asked_t = True, time.time()
+        H, W = frame.shape[:2]
+        small = cv2.resize(frame, (640, round(640 * H / W)))
+        threading.Thread(target=self._ask, args=(cv2.imencode(".jpg", small)[1].tobytes(), W / 640), daemon=True).start()
+
+    def _ask(self, jpeg: bytes, scale: float):
+        try:
+            boxes = [tuple(v * scale for v in p["box"]) for p in self.meta.find_people(jpeg)]
+            self.calls += 1
+            self.failures = 0
+            if boxes:
+                cx = 320 * scale            # frame centre in full-resolution pixels
+                score = lambda b: (b[2] - b[0]) * (b[3] - b[1]) * max(0.1, 1 - abs((b[0] + b[2]) / 2 - cx) / cx)   # noqa: E731
+                self.box, self.box_t = max(boxes, key=score), time.time()
+        except Exception as e:                              # no lock this time; give up after 3 failures in a row
+            self.failures += 1
+            print(f"signer lock: SAM 3.1 call failed ({e})")
+            if self.failures >= 3:
+                self.meta = None
+        finally:
+            self.busy = False
+
+    def pick(self, poses, W, H, a):
+        """The signer's pose: inside the locked box if there is one, else the largest person."""
+        if len(poses) > 1 and self.fresh():
+            l, t, r, b = self.box
+            inside = [q for q in poses if l <= (q[11].x + q[12].x) / 2 * W <= r and t <= (q[11].y + q[12].y) / 2 * H <= b]
+            if inside:
+                poses = inside
+        return max(poses, key=lambda q: shoulder_frame(q, a)[2])
+
+
 class Vision:
     """Camera + recognition loop in a background thread. Events go to a list the SSE endpoint reads."""
-    def __init__(self, camera: int, video: str | None = None):
+    def __init__(self, camera: int, video: str | None = None, signer_lock: bool = False):
         self.camera, self.video, self.thread, self.running = camera, video, None, False
+        self.signer_lock = SignerLock(signer_lock)
         self.events, self.lock, self.next_id = [], threading.Lock(), 1
         self.jpeg, self.jpeg_id = None, 0
         self.history = deque()           # (time, annotated JPEG, feature vector or None) for the last RECORD_S s
-        meta = json.loads((MODEL_DIR / "signnet.json").read_text())
-        self.labels = meta["labels"]
-        self.session = ort.InferenceSession(str(MODEL_DIR / "signnet.onnx"))
+        ckpt = torch.load(MODEL_DIR / "signnet.pt", map_location="cpu")      # written by export_onnx.py
+        if ckpt.get("feature_spec_version", 1) != 1:
+            raise SystemExit("signnet.pt uses another feature spec; re-export it with export_onnx.py")
+        self.labels = ckpt["labels"]
+        self.model = SignNet(len(self.labels))
+        self.model.load_state_dict(ckpt["model"])
+        self.model.eval()
 
     def emit(self, **event):
         with self.lock:
@@ -67,7 +133,8 @@ class Vision:
         self.running = False
 
     def classify(self, segment):
-        logits = self.session.run(None, {self.session.get_inputs()[0].name: model_input(segment)[None]})[0][0]
+        with torch.no_grad():
+            logits = self.model(torch.from_numpy(model_input(segment))[None])[0].numpy()
         p = np.exp(logits - logits.max())
         p /= p.sum()
         top = np.argsort(-p)[:3]
@@ -77,7 +144,7 @@ class Vision:
         if self.video:                                   # a file instead of the webcam (testing, demo fallback)
             cap = cv2.VideoCapture(self.video)
         else:
-            cap = cv2.VideoCapture(self.camera, cv2.CAP_DSHOW) if sys.platform == "win32" else cv2.VideoCapture(self.camera)
+            cap = cv2.VideoCapture(self.camera, cv2.CAP_DSHOW) if hasattr(cv2, "CAP_DSHOW") else cv2.VideoCapture(self.camera)
             cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
             cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)          # always the newest frame, never a growing backlog
@@ -87,7 +154,10 @@ class Vision:
             return
         file_dt = 1 / (cap.get(cv2.CAP_PROP_FPS) or 25) if self.video else 0
         next_t = time.perf_counter()
-        hands_m, face_m, pose_m = create_landmarkers(num_hands=2, num_poses=1)
+        # With signer lock: up to 3 people and 4 hands, so a bystander is seen (and ignored) rather than mistaken
+        # for the signer. That costs ~2x pose time and ~1.5x hand time on a laptop, so it is off by default.
+        lock_on = self.signer_lock.meta is not None
+        hands_m, face_m, pose_m = create_landmarkers(num_hands=4 if lock_on else 2, num_poses=3 if lock_on else 1)
         seg = Segmenter()
         brow_samples, baseline = [], None
         last_pose = last_face = None
@@ -129,7 +199,9 @@ class Vision:
                     last_face = timed("face", lambda: face_m.detect_for_video(img, ts))
                 n += 1
 
-                signer = max(last_pose.pose_landmarks, key=lambda q: shoulder_frame(q, a)[2]) if last_pose.pose_landmarks else None
+                people = last_pose.pose_landmarks
+                self.signer_lock.maybe_ask(frame, len(people))          # SAM 3.1 only with 2+ people in view
+                signer = self.signer_lock.pick(people, W, H, a) if people else None
                 fv, brow = None, None
                 if signer is not None:
                     ha, hb = assign_hands(h_res.hand_landmarks, signer, a)
@@ -176,10 +248,11 @@ class Vision:
                     self.emit(type="fps", fps=round(self.fps), ms={k: round(v) for k, v in times.items()})
 
                 faces = last_face.face_landmarks[:1] if last_face else []
-                status = (f"{self.fps:.0f} fps | body {'yes' if signer else 'NO'} | hands {len(h_res.hand_landmarks)} | "
+                lock = self.signer_lock
+                status = (f"{self.fps:.0f} fps | people {len(people)} | hands {len(h_res.hand_landmarks)} | "
                           f"face {'yes' if faces else 'NO'} | brows "
                           + ("calibrating" if brow is None else "RAISED" if brow > BROW_RAISE else "neutral")
-                          + f" | {seg.state if signer else '-'}")
+                          + f" | {seg.state if signer else '-'} | lock {lock.state} ({lock.calls} SAM calls)")
                 self.publish_preview(frame, signer, h_res.hand_landmarks, faces, status, fv, W, H)
         finally:
             cap.release()
@@ -192,6 +265,9 @@ class Vision:
     def publish_preview(self, frame, signer, hands, faces, status, fv, W, H):
         """Draw everything that is tracked (body, face, hands), mirror, stream, and keep it for 'Save recording'."""
         px = lambda p: (int(p.x * W), int(p.y * H))                            # noqa: E731
+        if self.signer_lock.fresh():                                           # the SAM 3.1 signer box
+            l, t, r, b = (int(v) for v in self.signer_lock.box)
+            cv2.rectangle(frame, (l, t), (r, b), (60, 200, 250), 3)
         if signer is not None:
             for s, e in UPPER_BODY:
                 cv2.line(frame, px(signer[s]), px(signer[e]), (235, 183, 133), 4)
@@ -306,6 +382,9 @@ if __name__ == "__main__":
     ap.add_argument("--camera", type=int, default=0)
     ap.add_argument("--video", help="read this video file (looped) instead of the webcam")
     ap.add_argument("--port", type=int, default=8001)
+    ap.add_argument("--signer-lock", action="store_true",
+                    help="track up to 3 people and let SAM 3.1 pick the signer when 2+ are in view (slower, uses credits)")
     args = ap.parse_args()
-    vision = Vision(args.camera, args.video)
+    vision = Vision(args.camera, args.video, signer_lock=args.signer_lock)
+    print(f"Signer lock: {vision.signer_lock.state} (SAM 3.1 is used only when 2+ people are in view)")
     uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="warning")

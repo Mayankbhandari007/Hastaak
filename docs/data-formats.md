@@ -23,12 +23,30 @@ Rules:
   interpolation, with 149–155 set to 0.
 
 ## Vocabulary (current model)
-`ALRIGHT, BLACK, COLOUR, GOOD_AFTERNOON, GOOD_MORNING, GREY, HELLO, HOW_ARE_YOU, ORANGE, PINK, WHITE`
-(model `python/runs/hastaak_v2`). `NOTHING` is added only when you have recordings labelled NOTHING.
+47 signs from INCLUDE's Adjectives, Greetings and Pronouns (`E:\12\Final_Dataset`, model
+`python/runs/hastaak_final47_synth`, same labels as `hastaak_final47`):
+`ALRIGHT, BAD, BEAUTIFUL, BLIND, CHEAP, CURVED, DEAF, DRY, EXPENSIVE, FEMALE, FLAT, GOOD, GOOD_AFTERNOON, GOOD_EVENING, GOOD_MORNING, GOOD_NIGHT, HAPPY, HE, HEALTHY, HELLO, HOW_ARE_YOU, I, IT, LOOSE, LOUD, MALE, MEAN, NICE, OLD, PLEASED, POOR, QUIET, RICH, SAD, SHE, SICK, THANK_YOU, THEY, THICK, THIN, TIGHT, UGLY, WE, WET, YOU, YOUNG, YOU_(PLURAL)`.
+The sign videos and avatar (`web/public/clips`, `web/public/avatar`) cover more signs; they are separate from
+the model. `NOTHING` is added only when you have recordings labelled NOTHING.
 
 ## Model files (`web/public/models/`)
 - `signnet.onnx`: input `x` [1, 32, 156] float32, output `logits` [1, number of signs]. One file, no `.data` file.
+  Used by the browser camera mode.
 - `signnet.json`: `{"labels": [...in output order...], "featureSpecVersion": 1}`.
+- `signnet.pt`: the same weights for PyTorch, `{"model", "labels", "feature_spec_version"}`. Used by
+  `vision_server.py`. All three are written together by `export_onnx.py`.
+
+## Avatar motion (`web/public/avatar/`)
+`<SIGN>.json`: `{"fps": 25, "frames": [[pose], [left hand], [right hand]], ...}` per frame, in feature-spec units
+(shoulder widths from the shoulder midpoint, y down, camera view):
+- pose: 14 numbers, (x, y) of nose, L shoulder, R shoulder, L elbow, R elbow, L wrist, R wrist;
+- each hand: 42 numbers, (x, y) of the 21 MediaPipe hand points, or `[]` if that hand is never seen.
+
+`index.json` maps sign → file. Written by `export_avatar.py`.
+
+## Audio uploads
+`POST /api/listen` gets 16 kHz mono 16-bit PCM WAV, converted in the page (`web/src/wav.ts`), because Muse Voice
+Transcribe accepts only WAV (16 or 24 kHz).
 - `runs/<name>/best.pt` (PyTorch): `{"model": state_dict, "labels": [...], "feature_spec_version": 1}`.
 
 ## Recordings
@@ -66,9 +84,9 @@ Every event also has `id` (increasing) and `t` (Unix time).
 {"signs": [{"candidates": [{"label": "HELLO", "p": 0.82}, {"label": "WHITE", "p": 0.1}], "question": false}],
  "language": "hi-IN", "speak": true}
 ```
-Reply: `{"text": "नमस्ते", "source": "sarvam" | "template", "signs": [...], "audio": "<base64 WAV>", "error": "..."}`.
+Reply: `{"text": "नमस्ते", "source": "meta" | "template", "signs": [...], "audio": "<base64 WAV>", "error": "..."}`.
 
 `POST /api/listen` (multipart `file`, `language` = `unknown` to auto-detect). Reply:
-`{"text", "language", "english", "signs": ["HELLO"], "glosses": ["hello"], "source": "sarvam" | "keywords" | "none", "error"}`.
+`{"text", "language", "english", "signs": ["HELLO"], "glosses": ["hello"], "source": "meta" | "keywords" | "none", "error"}`.
 
 Languages: `en-IN, hi-IN, bn-IN, ta-IN, te-IN, mr-IN, gu-IN, kn-IN, ml-IN, pa-IN, od-IN`.

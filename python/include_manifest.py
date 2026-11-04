@@ -15,6 +15,15 @@ def label_from(folder: str) -> str:
     return re.sub(r"^\d+\.\s*", "", folder).strip().upper().replace(" ", "_")
 
 
+def sign_folder(rel: Path) -> str:
+    """The nearest folder named '<number>. <sign>' above a video. Some INCLUDE signs keep a few clips in a
+    subfolder ('5. Beautiful/Extra/MVI_9573.MOV'); those belong to the sign, not to a sign called EXTRA."""
+    for part in reversed(rel.parent.parts):
+        if re.match(r"^\d+\.\s", part):
+            return part
+    return rel.parent.name
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default="data/include")
@@ -29,7 +38,7 @@ def main():
     for v in root.rglob("*"):
         if v.is_file() and v.suffix.lower() in EXTS:
             rel = v.relative_to(root)
-            by_label[label_from(v.parent.name)].append((rel.as_posix(), rel.parts[0]))
+            by_label[label_from(sign_folder(rel))].append((rel.as_posix(), rel.parts[0]))
 
     if not by_label:
         raise SystemExit(f"No videos found under {root}. Did you unzip INCLUDE there?")
